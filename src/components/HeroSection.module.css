@@ -1,0 +1,773 @@
+.hero {
+  position: relative;
+  min-height: calc(100vh - 4.5rem - 1.8rem);
+  display: flex;
+  align-items: center;
+  background-color: #060709;
+  color: #ffffff;
+  overflow: hidden;
+  padding: var(--space-8) 0;
+}
+
+.heroBgImage {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  object-position: center;
+  opacity: 1;
+}
+
+/* On desktop, the 2.5K architectural background is naturally dark on left and luminous on right */
+.heroVignette {
+  display: none;
+}
+
+/* Base style for mobile model layer & ambient glow (hidden on desktop) */
+.mobileModelLayer {
+  position: absolute;
+  inset: 0;
+  display: none;
+}
+
+.mobileAmbientGlow {
+  display: none;
+}
+
+.mobileArcGlow {
+  display: none;
+}
+
+.heroGrid {
+  position: relative;
+  z-index: 2;
+  display: grid;
+  grid-template-columns: 1.05fr 1fr;
+  gap: var(--space-8);
+  align-items: center;
+}
+
+/* LEFT COLUMN: Typography & Content */
+.heroContent {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-4);
+  max-width: 580px;
+}
+
+.heroBadgeDesktop {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+  font-family: var(--font-family-sans);
+  font-size: 0.72rem;
+  font-weight: 700;
+  letter-spacing: 0.2em;
+  text-transform: uppercase;
+  color: var(--accent-vibrant);
+  width: fit-content;
+  padding: 0.32rem 0.85rem;
+  background-color: rgba(14, 165, 233, 0.1);
+  border: 1px solid rgba(14, 165, 233, 0.28);
+  border-radius: var(--radius-full);
+}
+
+.heroBadgeMobile {
+  display: none;
+}
+
+.badgePulse {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background-color: var(--accent-vibrant);
+  box-shadow: 0 0 8px var(--accent-vibrant);
+}
+
+/* DESKTOP HEADLINE HIERARCHY:
+   Primary: Dominant, heavyweight streetwear statement
+   Secondary: Contrasting editorial italic, smaller size, refined color
+*/
+.heroTitleGroupDesktop {
+  display: flex;
+  flex-direction: column;
+  gap: 0.35rem;
+  margin: 0.2rem 0;
+}
+
+.heroTitlePrimary {
+  font-family: var(--font-family-sans);
+  font-size: clamp(3.2rem, 5.6vw, 4.85rem);
+  font-weight: 900;
+  line-height: 0.94;
+  letter-spacing: -0.04em;
+  text-transform: uppercase;
+  color: #ffffff;
+  margin: 0;
+  text-shadow: 0 4px 28px rgba(0, 0, 0, 0.6);
+  display: block;
+}
+
+.heroTitleSecondary {
+  font-family: var(--font-family-sans);
+  font-size: clamp(1.85rem, 3.2vw, 2.65rem);
+  font-weight: 600;
+  line-height: 1.1;
+  letter-spacing: -0.02em;
+  color: #94a3b8;
+  font-style: italic;
+  margin: 0;
+  text-shadow: 0 2px 14px rgba(0, 0, 0, 0.6);
+  display: block;
+}
+
+.heroTitleMobile {
+  display: none;
+}
+
+.heroSubtitleDesktop {
+  font-family: var(--font-family-sans);
+  font-size: clamp(1rem, 1.6vw, 1.15rem);
+  line-height: 1.65;
+  color: #cbd5e1;
+  max-width: 480px;
+  text-shadow: 0 2px 10px rgba(0, 0, 0, 0.7);
+  display: block;
+  margin: 0;
+}
+
+.heroSubtitleMobile {
+  display: none;
+}
+
+.heroContentMobile {
+  display: none;
+}
+
+.heroCtasDesktop {
+  display: flex;
+  align-items: center;
+  gap: var(--space-4);
+  flex-wrap: wrap;
+  margin-top: var(--space-2);
+}
+
+.heroCtasDesktop :global(.btn-sky) {
+  padding: 0.85rem 2rem;
+  font-size: 0.88rem;
+  font-weight: 800;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  border-radius: var(--radius-full);
+  box-shadow: 0 8px 24px rgba(14, 165, 233, 0.35);
+  transition: all var(--transition-normal);
+}
+
+.heroCtasDesktop :global(.btn-sky):hover {
+  transform: translateY(-2px);
+  box-shadow: 0 12px 28px rgba(14, 165, 233, 0.5);
+}
+
+.exploreBtn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0.85rem 1.85rem;
+  font-size: 0.85rem;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: #ffffff;
+  background-color: rgba(255, 255, 255, 0.06);
+  border: 1px solid rgba(255, 255, 255, 0.28);
+  border-radius: var(--radius-full);
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
+  transition: all var(--transition-fast);
+  text-decoration: none;
+}
+
+.exploreBtn:hover {
+  background-color: rgba(255, 255, 255, 0.15);
+  border-color: #ffffff;
+  color: #ffffff;
+  transform: translateY(-2px);
+}
+
+.heroCtasMobile {
+  display: none;
+}
+
+.quickSpecs {
+  display: flex;
+  align-items: center;
+  gap: var(--space-4);
+  margin-top: var(--space-4);
+  padding-top: var(--space-4);
+  border-top: 1px solid rgba(255, 255, 255, 0.12);
+  font-family: var(--font-family-sans);
+  font-size: 0.78rem;
+  font-weight: 500;
+  letter-spacing: 0.03em;
+  color: #94a3b8;
+  flex-wrap: wrap;
+}
+
+.specItem {
+  display: flex;
+  align-items: center;
+  gap: 0.45rem;
+}
+
+.specDot {
+  width: 4px;
+  height: 4px;
+  border-radius: 50%;
+  background-color: var(--accent-vibrant);
+}
+
+/* RIGHT COLUMN: Desktop Featured Streetwear Model */
+.modelShowcaseDesktop {
+  position: relative;
+  width: 100%;
+  max-width: 540px;
+  margin-left: auto;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: flex-end;
+}
+
+.groundShadow {
+  position: absolute;
+  bottom: 0;
+  left: 12%;
+  right: 12%;
+  height: 38px;
+  background: radial-gradient(
+    ellipse at 50% 60%,
+    rgba(0, 0, 0, 0.75) 0%,
+    rgba(0, 0, 0, 0.35) 50%,
+    transparent 75%
+  );
+  filter: blur(12px);
+  z-index: 1;
+  pointer-events: none;
+}
+
+.modelContainer {
+  position: relative;
+  width: 100%;
+  height: clamp(520px, 72vh, 720px);
+  z-index: 2;
+  display: flex;
+  align-items: flex-end;
+  justify-content: center;
+}
+
+.modelImage {
+  object-fit: contain;
+  object-position: bottom center;
+  filter: drop-shadow(0 16px 36px rgba(0, 0, 0, 0.65));
+  animation: modelEntrance 0.9s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+}
+
+@keyframes modelEntrance {
+  from {
+    opacity: 0;
+    transform: translateY(18px) scale(0.97);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+}
+
+
+/* =========================================================================
+   MOBILE HERO — Senior Luxury Streetwear Editorial
+   Max-width: 900px
+   - Architectural backdrop with rich obsidian tonal range
+   - Models positioned naturally with organic feathering
+   - Understated glassmorphism capsule badge (top-left)
+   - Refined two-tier headline: "Made to Move." + "Grounded in Faith."
+   - Elegant typography with balanced micro-pacing
+   - High-contrast tactile dual CTAs ("Shop Collection ↗" + "Explore Style")
+   - Generous bottom breathing cushion
+   ========================================================================= */
+/* =========================================================================
+   MOBILE HERO — Exact User Mockup Match
+   Max-width: 900px
+   - Top-left capsule badge: "● NEW COLLECTION - 2026"
+   - Models positioned in upper-mid area with smooth bottom fade
+   - Two-line italic bold headline: "MADE TO" (white) + "MOVE." (electric blue with paint underline)
+   - "Grounded in Faith." in refined italic text
+   - Electric blue accent divider bar
+   - 3-line description paragraph
+   - Dual-action pill buttons: "Shop Collection →" (solid blue) + "Explore Fits →" (glass border)
+   ========================================================================= */
+@media (max-width: 900px) {
+  .hero {
+    min-height: 100svh;
+    height: 100svh;
+    max-height: 880px;
+    padding: 0;
+    position: relative;
+    overflow: hidden;
+    background-color: #050811;
+  }
+
+  /* Architectural Brutalist Space background */
+  .heroBgImage {
+    object-position: center 25%;
+    transform: scale(1.05);
+    filter: brightness(0.65) contrast(1.15);
+  }
+
+  /* Right-side curved electric neon arc glow matching mockup */
+  .mobileArcGlow {
+    display: block;
+    position: absolute;
+    top: -30px;
+    right: -40px;
+    width: 320px;
+    height: 520px;
+    background: radial-gradient(
+      ellipse at 88% 30%,
+      rgba(0, 136, 255, 0.38) 0%,
+      rgba(0, 136, 255, 0.1) 45%,
+      transparent 72%
+    );
+    filter: blur(34px);
+    z-index: 1;
+    pointer-events: none;
+  }
+
+  /* Ambient light behind models */
+  .mobileAmbientGlow {
+    display: block;
+    position: absolute;
+    top: 10%;
+    left: 50%;
+    transform: translateX(-50%);
+    width: 280px;
+    height: 280px;
+    background: radial-gradient(
+      circle,
+      rgba(0, 136, 255, 0.2) 0%,
+      transparent 70%
+    );
+    filter: blur(40px);
+    z-index: 1;
+    pointer-events: none;
+  }
+
+  /* Models fill the full hero height — centered, no feet visible (too tall), just like reference */
+  .mobileModelLayer {
+    display: block;
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    z-index: 2;
+    pointer-events: none;
+  }
+
+  .mobileModelImage {
+    object-fit: cover;
+    object-position: center top;
+    filter: drop-shadow(0 8px 32px rgba(0, 0, 0, 0.7));
+    animation: mobileModelIn 0.8s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+  }
+
+  @keyframes mobileModelIn {
+    from {
+      opacity: 0;
+      transform: translateY(14px) scale(0.97);
+    }
+    to {
+      opacity: 1;
+      transform: translateY(0) scale(1);
+    }
+  }
+
+  /* Vignette: strong dark top for text, open middle for faces, dark bottom for CTAs */
+  .heroVignette {
+    display: block;
+    position: absolute;
+    inset: 0;
+    z-index: 3;
+    pointer-events: none;
+    background: linear-gradient(to bottom,
+      rgba(4, 5, 12, 0.88) 0%,
+      rgba(4, 5, 12, 0.55) 22%,
+      rgba(4, 5, 12, 0.08) 40%,
+      rgba(4, 5, 12, 0.08) 60%,
+      rgba(4, 5, 12, 0.60) 78%,
+      rgba(4, 5, 12, 0.95) 100%
+    );
+  }
+
+  .modelShowcaseDesktop  { display: none; }
+  .heroBadgeDesktop      { display: none; }
+  .heroTitleGroupDesktop { display: none; }
+  .heroSubtitleDesktop   { display: none; }
+  .heroCtasDesktop       { display: none; }
+  .quickSpecs            { display: none; }
+
+  /* Full-height grid shell */
+  .heroGrid {
+    display: block;
+    width: 100%;
+    height: 100%;
+    position: relative;
+    z-index: 4;
+  }
+
+  /* Content spans full height — centered for reference layout */
+  .heroContent {
+    position: absolute;
+    inset: 0;
+    padding: 20px 20px 28px 20px;
+    display: flex;
+    flex-direction: column;
+    justify-content: space-between;
+    align-items: center;
+    text-align: center;
+    max-width: 100%;
+    z-index: 4;
+  }
+
+  /* ── Mobile Container Stack — flex column, space-between, centered ── */
+  .heroContentMobile {
+    display: flex;
+    flex-direction: column;
+    justify-content: space-between;
+    align-items: center;
+    width: 100%;
+    height: 100%;
+  }
+
+  /* ── Upper Header Block: Badge + Headline + Subtitle ── */
+  .mobileHeaderBlock {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    width: 100%;
+    max-width: 360px;
+    margin-top: 8px;
+  }
+
+  /* ── AW26 DROP Cyan Capsule Badge ── */
+  .mobileDropBadge {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    background: #38bdf8;
+    color: #07090f;
+    font-family: var(--font-family-sans);
+    font-size: 0.63rem;
+    font-weight: 900;
+    letter-spacing: 0.18em;
+    text-transform: uppercase;
+    padding: 5px 16px;
+    border-radius: 9999px;
+    margin-bottom: 12px;
+    box-shadow: 0 0 20px rgba(56, 189, 248, 0.45), 0 2px 8px rgba(0, 0, 0, 0.5);
+  }
+
+  /* ── WEAR / YOUR DEEN. — Towering Condensed Headline ── */
+  .heroTitleMobileRef {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    margin: 0;
+    font-family: var(--font-family-sans);
+    font-size: clamp(3.4rem, 14vw, 4.6rem);
+    font-weight: 900;
+    line-height: 0.87;
+    letter-spacing: -0.03em;
+    text-transform: uppercase;
+    color: #f4f3ef;
+    text-shadow: 0 4px 32px rgba(0, 0, 0, 0.95);
+  }
+
+  /* ── Italic Refined Subtitle ── */
+  .heroSubtitleMobileRef {
+    font-family: var(--font-family-sans);
+    font-style: italic;
+    font-size: 0.8125rem;
+    font-weight: 500;
+    line-height: 1.48;
+    color: #a1a1aa;
+    max-width: 270px;
+    margin: 12px auto 0 auto;
+    text-align: center;
+    text-shadow: 0 2px 12px rgba(0, 0, 0, 0.85);
+  }
+
+  /* ── Bottom Action Group ── */
+  .heroActionsMobileRef {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    width: 100%;
+    max-width: 340px;
+    margin-bottom: 4px;
+  }
+
+  /* ── SHOP THE COLLECTION → Dark Obsidian Pill CTA ── */
+  .mobilePrimaryBtnRef {
+    width: 100%;
+    min-height: 52px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 9px;
+    background: #07090f;
+    border: 1.5px solid rgba(255, 255, 255, 0.42);
+    border-radius: 9999px;
+    color: #ffffff;
+    font-family: var(--font-family-sans);
+    font-size: 0.8125rem;
+    font-weight: 800;
+    letter-spacing: 0.09em;
+    text-transform: uppercase;
+    text-decoration: none;
+    transition: background 0.2s ease, border-color 0.2s ease, transform 0.18s ease;
+    backdrop-filter: blur(10px);
+    -webkit-backdrop-filter: blur(10px);
+    box-shadow: 0 8px 28px rgba(0, 0, 0, 0.55);
+  }
+
+  .mobilePrimaryBtnRef:active {
+    transform: scale(0.97);
+  }
+
+  /* ── Cyan Arrow ── */
+  .mobileBtnArrow {
+    color: #38bdf8;
+    font-size: 1.1rem;
+    font-weight: 700;
+    line-height: 1;
+    transition: transform 0.2s ease;
+  }
+
+  .mobilePrimaryBtnRef:hover .mobileBtnArrow {
+    transform: translateX(3px);
+  }
+
+  /* ── EXPLORE THE BRAND Subdued Link ── */
+  .mobileSecondaryLinkRef {
+    display: inline-block;
+    margin-top: 14px;
+    font-family: var(--font-family-sans);
+    font-size: 0.6875rem;
+    font-weight: 700;
+    letter-spacing: 0.18em;
+    text-transform: uppercase;
+    color: #a1a1aa;
+    text-decoration: underline;
+    text-underline-offset: 4px;
+    text-decoration-color: rgba(161, 161, 170, 0.4);
+    transition: color 0.2s ease, text-decoration-color 0.2s ease;
+  }
+
+  .mobileSecondaryLinkRef:hover {
+    color: #e4e4e7;
+    text-decoration-color: rgba(228, 228, 231, 0.6);
+  }
+
+  /* ── Top-Left Luminous Capsule Badge ── */
+  .heroBadgeMobile {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    font-family: var(--font-family-sans);
+    font-size: 0.68rem;
+    font-weight: 700;
+    letter-spacing: 0.16em;
+    text-transform: uppercase;
+    color: #ffffff;
+    background: rgba(0, 18, 42, 0.65);
+    border: 1.5px solid #0088ff;
+    backdrop-filter: blur(14px);
+    -webkit-backdrop-filter: blur(14px);
+    padding: 7px 18px;
+    border-radius: 9999px;
+    box-shadow: 0 0 16px rgba(0, 136, 255, 0.35), inset 0 1px 0 rgba(255, 255, 255, 0.15);
+    width: fit-content;
+  }
+
+  .mobileBadgePulse {
+    width: 7px;
+    height: 7px;
+    border-radius: 50%;
+    background-color: #0088ff;
+    box-shadow: 0 0 10px #0088ff, 0 0 16px #0088ff;
+  }
+
+  /* ── Lower Stack (Headline + Desc + CTAs) ── */
+  .mobileLowerStack {
+    display: flex;
+    flex-direction: column;
+    align-items: flex-start;
+    width: 100%;
+    max-width: 380px;
+  }
+
+  /* ── Italic Ultra-Bold Headline ("MADE TO MOVE.") ── */
+  .heroTitleMobile {
+    display: flex;
+    flex-direction: column;
+    gap: 0;
+    margin: 0 0 6px 0;
+    font-family: var(--font-family-sans);
+    font-size: clamp(3.1rem, 12.2vw, 3.85rem);
+    font-weight: 900;
+    font-style: italic;
+    line-height: 0.9;
+    letter-spacing: -0.045em;
+    text-transform: uppercase;
+    text-shadow: 0 4px 24px rgba(0, 0, 0, 0.95);
+  }
+
+  .heroTitleWhite {
+    color: #ffffff;
+    display: block;
+  }
+
+  .heroTitleBlue {
+    position: relative;
+    color: #0088ff;
+    display: inline-block;
+    width: fit-content;
+    text-shadow: 0 0 35px rgba(0, 136, 255, 0.45);
+  }
+
+  /* Paint stroke underline under MOVE. */
+  .heroTitleUnderline {
+    display: block;
+    position: absolute;
+    left: 0;
+    bottom: -7px;
+    width: 100%;
+    max-width: 175px;
+    height: 10px;
+    pointer-events: none;
+    filter: drop-shadow(0 0 8px rgba(0, 136, 255, 0.65));
+  }
+
+  /* Grounded in Faith. */
+  .heroTitleMobileSub {
+    display: block;
+    font-family: var(--font-family-sans);
+    font-size: clamp(1.4rem, 5.4vw, 1.75rem);
+    font-weight: 700;
+    font-style: italic;
+    color: #f1f5f9;
+    letter-spacing: -0.02em;
+    margin: 0 0 12px 0;
+    text-shadow: 0 2px 14px rgba(0, 0, 0, 0.85);
+  }
+
+  /* Electric cyan accent divider bar */
+  .mobileAccentLine {
+    width: 44px;
+    height: 3.5px;
+    background: #0088ff;
+    border-radius: 2px;
+    box-shadow: 0 0 12px rgba(0, 136, 255, 0.7);
+    margin-bottom: 18px;
+  }
+
+  /* ── Editorial Description ── */
+  .heroSubtitleMobile {
+    display: block;
+    font-family: var(--font-family-sans);
+    font-size: 0.875rem;
+    line-height: 1.48;
+    font-weight: 400;
+    color: #cbd5e1;
+    max-width: 320px;
+    text-shadow: 0 1px 8px rgba(0, 0, 0, 0.9);
+    margin: 0 0 24px 0;
+  }
+
+  /* ── Dual-Action Streetwear CTAs ── */
+  .heroCtasMobile {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    width: 100%;
+  }
+
+  /* Primary Action: Solid electric blue pill with arrow */
+  .mobilePrimaryCta {
+    flex: 1.15;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+    min-height: 48px;
+    padding: 0 1.25rem;
+    font-family: var(--font-family-sans);
+    font-size: 0.84rem;
+    font-weight: 600;
+    letter-spacing: 0.01em;
+    color: #ffffff;
+    background: #0088ff;
+    border: none;
+    border-radius: 9999px;
+    box-shadow: 0 8px 25px -4px rgba(0, 136, 255, 0.58);
+    text-decoration: none;
+    transition: transform 0.2s cubic-bezier(0.16, 1, 0.3, 1), box-shadow 0.2s ease;
+  }
+
+  .mobilePrimaryCta:active {
+    transform: scale(0.97);
+  }
+
+  /* Secondary Action: Frosted border glass pill with arrow */
+  .mobileSecondaryCta {
+    flex: 1;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+    min-height: 48px;
+    padding: 0 1.1rem;
+    font-family: var(--font-family-sans);
+    font-size: 0.84rem;
+    font-weight: 500;
+    letter-spacing: 0.01em;
+    color: #ffffff;
+    background: rgba(5, 10, 20, 0.72);
+    border: 1.5px solid rgba(255, 255, 255, 0.28);
+    backdrop-filter: blur(12px);
+    -webkit-backdrop-filter: blur(12px);
+    border-radius: 9999px;
+    text-decoration: none;
+    transition: background 0.2s ease, border-color 0.2s ease, transform 0.2s ease;
+  }
+
+  .mobileSecondaryCta:active {
+    transform: scale(0.97);
+  }
+
+  .ctaArrow {
+    font-size: 1.1rem;
+    line-height: 1;
+    transition: transform 0.2s ease;
+  }
+
+  .mobilePrimaryCta:hover .ctaArrow,
+  .mobileSecondaryCta:hover .ctaArrow {
+    transform: translateX(3px);
+  }
+}
+
+

@@ -1,0 +1,648 @@
+/* Top Announcement Bar (Delayed slide-in like an ad banner with dismiss) */
+.announcementBar {
+  background-color: var(--sky-100);
+  color: var(--sky-900, #0369a1);
+  font-size: 0.68rem;
+  font-weight: 700;
+  letter-spacing: 0.07em;
+  text-transform: uppercase;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0.35rem 2.4rem 0.35rem 1rem;
+  position: relative;
+  border-bottom: 1px solid var(--sky-200);
+  transition: background-color var(--transition-fast), color var(--transition-fast);
+  animation: announcementEntrance 0.45s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+}
+
+@keyframes announcementEntrance {
+  0% {
+    opacity: 0;
+    transform: translateY(-100%);
+  }
+  60% {
+    opacity: 1;
+    transform: translateY(2px);
+  }
+  100% {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+[data-theme="dark"] .announcementBar {
+  background-color: var(--sky-50);
+  color: var(--sky-400);
+  border-bottom-color: var(--border-dark);
+}
+
+.announcementText {
+  text-align: center;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.announcementDismissBtn {
+  position: absolute;
+  right: 0.6rem;
+  top: 50%;
+  transform: translateY(-50%);
+  background: none;
+  border: none;
+  color: inherit;
+  opacity: 0.75;
+  cursor: pointer;
+  padding: 4px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: var(--radius-full);
+  transition: all var(--transition-fast);
+}
+
+.announcementDismissBtn:hover {
+  opacity: 1;
+  background-color: rgba(0, 0, 0, 0.08);
+}
+
+/* Header Container */
+.header {
+  position: sticky;
+  top: 0;
+  z-index: 50;
+  background-color: rgba(252, 252, 253, 0.96);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+  border-bottom: 1px solid var(--border-light);
+  transition: all var(--transition-normal);
+}
+
+[data-theme="dark"] .header {
+  background-color: rgba(10, 10, 12, 0.96);
+  border-bottom-color: var(--border-light);
+}
+
+.headerInner {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  height: 4.5rem;
+  padding: 0 var(--space-6);
+  max-width: var(--container-max);
+  margin: 0 auto;
+  gap: var(--space-6);
+}
+
+/* 1. LEFT SIDE: Logo & Navigation Links */
+.leftSection {
+  display: flex;
+  align-items: center;
+  gap: var(--space-6);
+  flex-shrink: 0;
+}
+
+.logoLink {
+  display: flex;
+  align-items: center;
+}
+
+.logoImg {
+  height: 2.75rem;
+  width: auto;
+  object-fit: contain;
+  transition: transform var(--transition-fast);
+}
+
+.logoImg:hover {
+  transform: scale(1.03);
+}
+
+.navLinksDesktop {
+  display: flex;
+  align-items: center;
+  gap: var(--space-5);
+}
+
+.navLink {
+  font-size: 0.85rem;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: var(--text-primary);
+  padding: 0.4rem 0.2rem;
+  transition: color var(--transition-fast);
+}
+
+.navLink:hover {
+  color: var(--accent-primary);
+}
+
+/* 2. MIDDLE / CENTER: Search Bar */
+.centerSection {
+  flex: 1;
+  display: flex;
+  justify-content: center;
+  max-width: 580px;
+}
+
+/* 3. RIGHT SIDE: Mobile Search, Theme, Account, Support, Cart */
+.rightSection {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  flex-shrink: 0;
+}
+
+/* Mobile search icon button in the header row */
+.mobileSearchBtn {
+  display: none;
+  align-items: center;
+  justify-content: center;
+  width: 36px;
+  height: 36px;
+  border-radius: var(--radius-full);
+  border: 1px solid var(--border-light);
+  background-color: var(--bg-card);
+  color: var(--text-primary);
+  cursor: pointer;
+  transition: all var(--transition-fast);
+}
+
+.mobileSearchBtn:hover,
+.mobileSearchBtnActive {
+  border-color: var(--accent-primary);
+  color: var(--accent-primary);
+  background-color: var(--bg-secondary);
+}
+
+.actionBtn {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+  padding: 0.45rem 0.65rem;
+  border-radius: var(--radius-xs);
+  font-size: 0.78rem;
+  font-weight: 700;
+  letter-spacing: 0.03em;
+  text-transform: uppercase;
+  color: var(--text-primary);
+  background: none;
+  border: 1px solid transparent;
+  cursor: pointer;
+  transition: all var(--transition-fast);
+  white-space: nowrap;
+}
+
+.actionBtn:hover {
+  background-color: var(--bg-secondary);
+  border-color: var(--border-light);
+  color: var(--accent-primary);
+}
+
+.btnText {
+  display: inline-block;
+}
+
+/* Compact Cart Button */
+.cartBtn {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+  padding: 0.5rem 0.85rem;
+  background-color: var(--bg-dark);
+  color: var(--text-inverse);
+  border-radius: var(--radius-full);
+  font-size: 0.8rem;
+  font-weight: 700;
+  cursor: pointer;
+  transition: all var(--transition-fast);
+  position: relative;
+}
+
+[data-theme="dark"] .cartBtn {
+  background-color: var(--accent-primary);
+  color: var(--bg-dark);
+}
+
+.cartBtn:hover {
+  background-color: var(--accent-primary);
+  color: #ffffff;
+}
+
+[data-theme="dark"] .cartBtn:hover {
+  background-color: var(--accent-hover);
+  color: var(--bg-dark);
+}
+
+.cartBadge {
+  background-color: var(--accent-vibrant);
+  color: var(--bg-dark);
+  font-size: 0.7rem;
+  font-weight: 800;
+  min-width: 18px;
+  height: 18px;
+  padding: 0 4px;
+  border-radius: var(--radius-full);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+[data-theme="dark"] .cartBadge {
+  background-color: var(--bg-dark);
+  color: var(--text-primary);
+}
+
+/* Compact Theme Toggle Button */
+.themeBtnCompact {
+  width: 36px;
+  height: 36px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: var(--radius-full);
+  border: 1px solid var(--border-light);
+  background-color: var(--bg-card);
+  color: var(--text-primary);
+  cursor: pointer;
+  transition: all var(--transition-fast);
+}
+
+.themeBtnCompact:hover {
+  border-color: var(--accent-primary);
+  color: var(--accent-primary);
+  background-color: var(--bg-secondary);
+}
+
+/* Expandable Mobile Search Dropdown Row */
+.mobileSearchExpandable {
+  display: none;
+  padding: 0.6rem var(--space-4);
+  background-color: var(--bg-card);
+  border-top: 1px solid var(--border-subtle);
+  animation: searchSlideDown 0.2s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+}
+
+@keyframes searchSlideDown {
+  from {
+    opacity: 0;
+    transform: translateY(-8px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.mobileToggle {
+  display: none;
+  padding: 0.35rem;
+  cursor: pointer;
+  color: var(--text-primary);
+}
+
+/* ========================================================
+   FULL-HEIGHT MOBILE SIDEBAR DRAWER (Jumia Reference)
+   ======================================================== */
+.drawerBackdrop {
+  position: fixed;
+  inset: 0;
+  background-color: rgba(10, 10, 12, 0.65);
+  backdrop-filter: blur(4px);
+  -webkit-backdrop-filter: blur(4px);
+  z-index: 999;
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 0.25s ease;
+}
+
+.drawerBackdropVisible {
+  opacity: 1;
+  pointer-events: auto;
+}
+
+.mobileMenuDrawer {
+  position: fixed;
+  top: 0;
+  left: 0;
+  bottom: 0;
+  width: 82%;
+  max-width: 320px;
+  height: 100vh;
+  height: 100dvh;
+  background-color: var(--bg-card);
+  box-shadow: 6px 0 28px rgba(0, 0, 0, 0.35);
+  z-index: 1000;
+  display: flex;
+  flex-direction: column;
+  transform: translateX(-100%);
+  transition: transform 0.3s cubic-bezier(0.16, 1, 0.3, 1);
+  overflow: hidden;
+}
+
+.mobileMenuDrawerOpen {
+  transform: translateX(0);
+}
+
+/* Drawer Header with Close '✕' + Logo */
+.drawerHeader {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  padding: 1rem var(--space-4);
+  border-bottom: 1px solid var(--border-light);
+  background-color: var(--bg-card);
+  flex-shrink: 0;
+}
+
+.drawerCloseBtn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 36px;
+  height: 36px;
+  border-radius: var(--radius-full);
+  background: none;
+  border: none;
+  color: var(--text-primary);
+  cursor: pointer;
+  transition: background-color var(--transition-fast);
+}
+
+.drawerCloseBtn:hover {
+  background-color: var(--bg-secondary);
+}
+
+.drawerLogoImg {
+  height: 2.1rem;
+  width: auto;
+  object-fit: contain;
+}
+
+/* Scrollable Drawer Body */
+.drawerBody {
+  flex: 1;
+  overflow-y: auto;
+  -webkit-overflow-scrolling: touch;
+  padding-bottom: var(--space-8);
+}
+
+/* Quick Action / Help Section */
+.drawerSection {
+  border-bottom: 1px solid var(--border-light);
+  padding: 0.25rem 0;
+}
+
+.drawerActionLink {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  width: 100%;
+  padding: 0.85rem var(--space-4);
+  font-size: 0.78rem;
+  font-weight: 800;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: var(--text-primary);
+  background: none;
+  border: none;
+  cursor: pointer;
+  text-align: left;
+  text-decoration: none;
+  transition: background-color var(--transition-fast);
+}
+
+.drawerActionLink:hover {
+  background-color: var(--bg-secondary);
+}
+
+.drawerSubList {
+  list-style: none;
+  padding: 0 0 0.25rem 0;
+}
+
+.drawerSubItem {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  padding: 0.7rem var(--space-4);
+  font-size: 0.86rem;
+  font-weight: 600;
+  color: var(--text-secondary);
+  text-decoration: none;
+  background: none;
+  border: none;
+  width: 100%;
+  text-align: left;
+  cursor: pointer;
+  transition: all var(--transition-fast);
+}
+
+.drawerSubItem:hover {
+  color: var(--accent-primary);
+  background-color: var(--bg-secondary);
+}
+
+.drawerIconWrapper {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--text-muted);
+  flex-shrink: 0;
+  width: 20px;
+}
+
+.drawerSubItem:hover .drawerIconWrapper {
+  color: var(--accent-primary);
+}
+
+/* Categories Section */
+.drawerCategoryHeader {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0.85rem var(--space-4) 0.4rem var(--space-4);
+}
+
+.drawerCategoryTitle {
+  font-size: 0.72rem;
+  font-weight: 800;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  color: var(--text-muted);
+}
+
+.drawerSeeAll {
+  font-size: 0.74rem;
+  font-weight: 700;
+  color: var(--accent-primary);
+  text-decoration: none;
+}
+
+.drawerSeeAll:hover {
+  text-decoration: underline;
+}
+
+.drawerCategoryList {
+  list-style: none;
+  padding: 0;
+}
+
+.drawerCategoryItem {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  padding: 0.72rem var(--space-4);
+  font-size: 0.88rem;
+  font-weight: 600;
+  color: var(--text-primary);
+  text-decoration: none;
+  transition: all var(--transition-fast);
+}
+
+.drawerCategoryItem:hover {
+  background-color: var(--bg-secondary);
+  color: var(--accent-primary);
+}
+
+/* REAL SVG Theme Switcher (NO EMOJIS) */
+.drawerThemeSection {
+  padding: var(--space-4);
+  border-bottom: 1px solid var(--border-light);
+}
+
+.drawerThemeLabel {
+  font-size: 0.72rem;
+  font-weight: 800;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  color: var(--text-muted);
+  margin-bottom: var(--space-2);
+}
+
+.themeTogglePill {
+  display: flex;
+  align-items: center;
+  background-color: var(--bg-secondary);
+  border: 1px solid var(--border-light);
+  border-radius: var(--radius-full);
+  padding: 3px;
+  gap: 3px;
+}
+
+.themeOptionBtn {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.45rem;
+  padding: 0.5rem 0.6rem;
+  font-size: 0.78rem;
+  font-weight: 700;
+  border-radius: var(--radius-full);
+  border: none;
+  background: none;
+  color: var(--text-muted);
+  cursor: pointer;
+  transition: all var(--transition-fast);
+}
+
+.themeOptionActive {
+  background-color: var(--bg-card);
+  color: var(--text-primary);
+  box-shadow: 0 1px 4px rgba(0, 0, 0, 0.12);
+}
+
+[data-theme="dark"] .themeOptionActive {
+  background-color: var(--accent-primary);
+  color: var(--bg-dark);
+}
+
+/* Drawer Footer */
+.drawerFooter {
+  padding: var(--space-4);
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+}
+
+.whatsappLink {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.5rem;
+  padding: 0.7rem 1rem;
+  background-color: #10b981;
+  color: #ffffff;
+  border-radius: var(--radius-xs);
+  font-size: 0.78rem;
+  font-weight: 700;
+  text-decoration: none;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  transition: opacity var(--transition-fast);
+}
+
+.whatsappLink:hover {
+  opacity: 0.9;
+}
+
+/* Responsive Breakpoints */
+@media (max-width: 1024px) {
+  .navLinksDesktop {
+    display: none;
+  }
+}
+
+@media (max-width: 768px) {
+  .headerInner {
+    padding: 0 var(--space-3);
+    height: 3.75rem;
+    gap: var(--space-2);
+  }
+
+  .centerSection {
+    display: none;
+  }
+
+  /* Inline mobile search toggle button */
+  .mobileSearchBtn {
+    display: inline-flex;
+  }
+
+  .mobileSearchExpandable {
+    display: block;
+  }
+
+  .mobileToggle {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+  }
+
+  .leftSection {
+    gap: var(--space-2);
+  }
+
+  .logoImg {
+    height: 2.1rem;
+  }
+
+  .btnText {
+    display: none;
+  }
+
+  .actionBtn {
+    padding: 0.4rem;
+  }
+
+  .cartBtn {
+    padding: 0.4rem 0.65rem;
+  }
+
+  .contactBtnDesktop {
+    display: none;
+  }
+}

@@ -1,0 +1,890 @@
+/* ══════════════════════════════════════════════════════════════════════
+   CANDLESTICK FEATURED DROP SECTION
+   Crypto Candlestick / Ascending Staggered Product Hierarchy
+   DUAL-THEME SUPPORT: Flawless Dark Mode & White/Light Mode
+══════════════════════════════════════════════════════════════════════ */
+
+.section {
+  position: relative;
+  padding: var(--space-16) 0 var(--space-20) 0;
+  border-top: 1px solid var(--candle-border-top);
+  overflow: hidden;
+
+  /* ── Dark Mode (Default) Variables ── */
+  --candle-bg-section: #06080d;
+  --candle-radial-1: rgba(56, 189, 248, 0.07);
+  --candle-radial-2: rgba(14, 165, 233, 0.05);
+  --candle-border-top: rgba(255, 255, 255, 0.08);
+
+  --candle-text-headline: #ffffff;
+  --candle-text-sub: #94a3b8;
+  --candle-text-counter: #64748b;
+  --candle-tag-color: #38bdf8;
+  --candle-btn-border: rgba(255, 255, 255, 0.2);
+  --candle-btn-text: #f1f5f9;
+
+  --candle-stage-bg: rgba(8, 11, 18, 0.75);
+  --candle-stage-border: rgba(255, 255, 255, 0.22);
+  --candle-datum: rgba(255, 255, 255, 0.04);
+  --candle-axis: rgba(255, 255, 255, 0.3);
+  --candle-watermark: rgba(255, 255, 255, 0.03);
+
+  --candle-wick-color: rgba(56, 189, 248, 0.38);
+  --candle-wick-glow: #38bdf8;
+  --candle-wick-text: rgba(56, 189, 248, 0.7);
+
+  --candle-card-bg: #0b0f17;
+  --candle-card-border: rgba(255, 255, 255, 0.12);
+  --candle-card-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.6);
+  --candle-card-header-bg: rgba(255, 255, 255, 0.02);
+  --candle-card-header-border: rgba(255, 255, 255, 0.08);
+  --candle-card-spec-bg: rgba(255, 255, 255, 0.06);
+  --candle-card-spec-text: #e2e8f0;
+
+  --candle-img-bg: #080b11;
+
+  --candle-card-info-bg: #0d121b;
+  --candle-card-info-border: rgba(255, 255, 255, 0.08);
+  --candle-card-title: #ffffff;
+  --candle-card-price: #f8fafc;
+
+  --candle-plaque-bg: rgba(13, 17, 26, 0.92);
+  --candle-plaque-border: rgba(255, 255, 255, 0.12);
+  --candle-plaque-title: #ffffff;
+  --candle-plaque-desc: #94a3b8;
+
+  --candle-pill-bg: rgba(255, 255, 255, 0.05);
+  --candle-pill-border: rgba(255, 255, 255, 0.14);
+  --candle-pill-text: #94a3b8;
+
+  background-color: var(--candle-bg-section);
+  background-image:
+    radial-gradient(ellipse at 15% 0%, var(--candle-radial-1) 0%, transparent 60%),
+    radial-gradient(ellipse at 85% 100%, var(--candle-radial-2) 0%, transparent 55%);
+  transition: background-color 0.3s ease, border-color 0.3s ease;
+}
+
+/* ── Light / White Mode Theme Overrides ── */
+:global([data-theme="light"]) .section {
+  --candle-bg-section: #f6f7fa;
+  --candle-radial-1: rgba(2, 132, 199, 0.06);
+  --candle-radial-2: rgba(14, 165, 233, 0.04);
+  --candle-border-top: rgba(0, 0, 0, 0.08);
+
+  --candle-text-headline: #0a0a0c;
+  --candle-text-sub: #525866;
+  --candle-text-counter: #64748b;
+  --candle-tag-color: #0284c7;
+  --candle-btn-border: rgba(0, 0, 0, 0.2);
+  --candle-btn-text: #0a0a0c;
+
+  --candle-stage-bg: rgba(255, 255, 255, 0.88);
+  --candle-stage-border: rgba(0, 0, 0, 0.18);
+  --candle-datum: rgba(0, 0, 0, 0.05);
+  --candle-axis: rgba(0, 0, 0, 0.35);
+  --candle-watermark: rgba(0, 0, 0, 0.035);
+
+  --candle-wick-color: rgba(2, 132, 199, 0.45);
+  --candle-wick-glow: #0284c7;
+  --candle-wick-text: #0284c7;
+
+  --candle-card-bg: #ffffff;
+  --candle-card-border: rgba(0, 0, 0, 0.12);
+  --candle-card-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.08), 0 2px 6px -2px rgba(0, 0, 0, 0.04);
+  --candle-card-header-bg: rgba(0, 0, 0, 0.02);
+  --candle-card-header-border: rgba(0, 0, 0, 0.06);
+  --candle-card-spec-bg: rgba(0, 0, 0, 0.05);
+  --candle-card-spec-text: #1e293b;
+
+  --candle-img-bg: #f1f3f7;
+
+  --candle-card-info-bg: #ffffff;
+  --candle-card-info-border: rgba(0, 0, 0, 0.06);
+  --candle-card-title: #0a0a0c;
+  --candle-card-price: #0a0a0c;
+
+  --candle-plaque-bg: rgba(255, 255, 255, 0.95);
+  --candle-plaque-border: rgba(0, 0, 0, 0.12);
+  --candle-plaque-title: #0a0a0c;
+  --candle-plaque-desc: #64748b;
+
+  --candle-pill-bg: #ffffff;
+  --candle-pill-border: rgba(0, 0, 0, 0.12);
+  --candle-pill-text: #525866;
+}
+
+/* ── Header Area ── */
+.headerWrapper {
+  margin-bottom: var(--space-8);
+}
+
+.topRow {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: var(--space-3);
+  font-family: var(--font-family-mono);
+  font-size: 0.68rem;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+}
+
+.dropTag {
+  color: var(--candle-tag-color);
+  font-weight: 700;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.pulseDot {
+  display: inline-block;
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: var(--candle-tag-color);
+  box-shadow: 0 0 8px var(--candle-tag-color);
+  animation: pulse 2s infinite ease-in-out;
+}
+
+@keyframes pulse {
+  0%, 100% { opacity: 1; transform: scale(1); }
+  50% { opacity: 0.4; transform: scale(0.85); }
+}
+
+.dropCounter {
+  color: var(--candle-text-counter);
+  font-weight: 600;
+}
+
+.headline {
+  font-size: clamp(2.4rem, 5.2vw, 4.8rem);
+  font-weight: 900;
+  line-height: 0.92;
+  letter-spacing: -0.04em;
+  text-transform: uppercase;
+  color: var(--candle-text-headline);
+  margin: 0 0 var(--space-5) 0;
+  transition: color 0.3s ease;
+}
+
+.midRow {
+  display: flex;
+  align-items: flex-end;
+  justify-content: space-between;
+  gap: var(--space-8);
+  padding-bottom: var(--space-6);
+  border-bottom: 1px solid var(--candle-border-top);
+}
+
+.subtitle {
+  font-size: 0.92rem;
+  line-height: 1.65;
+  color: var(--candle-text-sub);
+  max-width: 520px;
+  margin: 0;
+  transition: color 0.3s ease;
+}
+
+.viewAllTopBtn {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  white-space: nowrap;
+  flex-shrink: 0;
+  padding: 0.65rem 1.4rem;
+  background: transparent;
+  border: 1.5px solid var(--candle-btn-border);
+  border-radius: 9999px;
+  color: var(--candle-btn-text);
+  font-family: var(--font-family-sans);
+  font-size: 0.74rem;
+  font-weight: 800;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  text-decoration: none;
+  transition: all 0.2s ease;
+}
+
+.viewAllTopBtn:hover {
+  background: rgba(56, 189, 248, 0.1);
+  border-color: var(--candle-wick-glow);
+  color: var(--candle-wick-glow);
+  transform: translateY(-1px);
+}
+
+.arrowIcon {
+  display: inline-block;
+  transition: transform 0.2s ease;
+}
+
+.viewAllTopBtn:hover .arrowIcon {
+  transform: translateX(4px);
+}
+
+/* ══════════════════════════════════════════════════════════════════════
+   CANDLESTICK STAGE FRAME
+   The outer bounded box from the reference diagram
+══════════════════════════════════════════════════════════════════════ */
+.stageContainer {
+  position: relative;
+  width: 100%;
+  height: 700px;
+  border: 1.5px dashed var(--candle-stage-border);
+  border-radius: 4px;
+  background: var(--candle-stage-bg);
+  backdrop-filter: blur(8px);
+  margin-top: var(--space-6);
+  overflow: hidden;
+  transition: background-color 0.3s ease, border-color 0.3s ease;
+}
+
+/* Corner architectural crosshairs */
+.cornerTL, .cornerTR, .cornerBL, .cornerBR {
+  position: absolute;
+  font-family: var(--font-family-mono);
+  font-size: 0.75rem;
+  color: var(--candle-wick-color);
+  line-height: 1;
+  pointer-events: none;
+  z-index: 5;
+}
+.cornerTL { top: 6px; left: 8px; }
+.cornerTR { top: 6px; right: 8px; }
+.cornerBL { bottom: 6px; left: 8px; }
+.cornerBR { bottom: 6px; right: 8px; }
+
+/* Left technical axis markers */
+.axisLabelTop, .axisLabelMid, .axisLabelBottom {
+  position: absolute;
+  left: 10px;
+  font-family: var(--font-family-mono);
+  font-size: 0.58rem;
+  letter-spacing: 0.14em;
+  color: var(--candle-axis);
+  text-transform: uppercase;
+  pointer-events: none;
+  z-index: 4;
+}
+.axisLabelTop { top: 18px; }
+.axisLabelMid { top: 50%; transform: translateY(-50%); }
+.axisLabelBottom { bottom: 18px; }
+
+/* Horizontal background datum guide lines */
+.datumLineHigh, .datumLineMid, .datumLineLow {
+  position: absolute;
+  left: 0;
+  right: 0;
+  height: 1px;
+  border-bottom: 1px dashed var(--candle-datum);
+  pointer-events: none;
+  z-index: 1;
+}
+.datumLineHigh { top: 12%; }
+.datumLineMid { top: 50%; }
+.datumLineLow { bottom: 12%; }
+
+/* Watermark in negative space */
+.stageWatermark {
+  position: absolute;
+  right: 40px;
+  bottom: 85px;
+  font-family: var(--font-family-mono);
+  font-size: clamp(1.8rem, 4vw, 3.2rem);
+  font-weight: 900;
+  color: var(--candle-watermark);
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  pointer-events: none;
+  user-select: none;
+  z-index: 1;
+}
+
+/* ══════════════════════════════════════════════════════════════════════
+   4 CANDLESTICK TRACKS (COLUMNS)
+══════════════════════════════════════════════════════════════════════ */
+.gridTrack {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 24px;
+  height: 100%;
+  padding: 0 40px;
+  position: relative;
+  z-index: 3;
+}
+
+.column {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  height: 100%;
+  position: relative;
+  cursor: pointer;
+}
+
+/* ── Top Wick ── */
+.wickTop {
+  width: 1px;
+  border-left: 1.5px dashed var(--candle-wick-color);
+  flex-shrink: 0;
+  position: relative;
+  display: flex;
+  justify-content: center;
+  transition: all 0.3s ease;
+}
+
+.wickTipTop {
+  position: absolute;
+  top: 0;
+  transform: translateY(-50%);
+  font-family: var(--font-family-mono);
+  font-size: 0.58rem;
+  letter-spacing: 0.08em;
+  color: var(--candle-wick-text);
+  white-space: nowrap;
+  pointer-events: none;
+  transition: color 0.3s ease;
+}
+
+/* ── Bottom Wick ── */
+.wickBottom {
+  width: 1px;
+  border-left: 1.5px dashed var(--candle-wick-color);
+  flex-shrink: 0;
+  position: relative;
+  display: flex;
+  justify-content: center;
+  transition: all 0.3s ease;
+}
+
+.wickTipBottom {
+  position: absolute;
+  bottom: 0;
+  transform: translateY(50%);
+  font-family: var(--font-family-mono);
+  font-size: 0.58rem;
+  letter-spacing: 0.08em;
+  color: var(--candle-wick-text);
+  white-space: nowrap;
+  pointer-events: none;
+  transition: color 0.3s ease;
+}
+
+/* ══════════════════════════════════════════════════════════════════════
+   CANDLESTICK STAIRCASE HEIGHTS & OFFSETS
+   Col 1: Tallest, sits lower/mid
+   Col 2: Shorter, top is higher, bottom doesn't reach 1
+   Col 3: Shorter, top is higher, bottom doesn't reach 2
+   Col 4: Shortest, top is highest, bottom doesn't reach 3
+══════════════════════════════════════════════════════════════════════ */
+
+/* Col 1 */
+.column:nth-child(1) .wickTop { height: 75px; }
+.column:nth-child(1) .candleCard { height: 490px; }
+.column:nth-child(1) .wickBottom { flex: 1; min-height: 135px; }
+
+/* Col 2 */
+.column:nth-child(2) .wickTop { height: 45px; }
+.column:nth-child(2) .candleCard { height: 420px; }
+.column:nth-child(2) .wickBottom { flex: 1; min-height: 235px; }
+
+/* Col 3 */
+.column:nth-child(3) .wickTop { height: 22px; }
+.column:nth-child(3) .candleCard { height: 350px; }
+.column:nth-child(3) .wickBottom { flex: 1; min-height: 328px; }
+
+/* Col 4 */
+.column:nth-child(4) .wickTop { height: 10px; }
+.column:nth-child(4) .candleCard { height: 280px; }
+.column:nth-child(4) .wickBottom { flex: 1; min-height: 410px; }
+
+/* ══════════════════════════════════════════════════════════════════════
+   CANDLE CARD BODY (Product Card)
+══════════════════════════════════════════════════════════════════════ */
+.candleCard {
+  width: 100%;
+  border: 1.5px solid var(--candle-card-border);
+  border-radius: 4px;
+  background: var(--candle-card-bg);
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  box-shadow: var(--candle-card-shadow);
+  transition: transform 0.35s cubic-bezier(0.16, 1, 0.3, 1),
+              border-color 0.35s cubic-bezier(0.16, 1, 0.3, 1),
+              box-shadow 0.35s cubic-bezier(0.16, 1, 0.3, 1),
+              background-color 0.3s ease;
+  text-decoration: none;
+}
+
+/* Card Header (Category & Spec) */
+.cardHeader {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 8px 12px;
+  border-bottom: 1px solid var(--candle-card-header-border);
+  font-family: var(--font-family-mono);
+  font-size: 0.64rem;
+  text-transform: uppercase;
+  letter-spacing: 0.12em;
+  background: var(--candle-card-header-bg);
+  flex-shrink: 0;
+}
+
+.indexTag {
+  color: var(--candle-tag-color);
+  font-weight: 700;
+}
+
+.categoryName {
+  color: var(--candle-text-sub);
+}
+
+.specBadge {
+  color: var(--candle-card-spec-text);
+  font-weight: 600;
+  background: var(--candle-card-spec-bg);
+  padding: 2px 6px;
+  border-radius: 2px;
+}
+
+/* Card Image Area */
+.cardImageWrapper {
+  position: relative;
+  flex: 1;
+  width: 100%;
+  min-height: 0;
+  overflow: hidden;
+  background: #ffffff;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.productImage {
+  object-fit: contain;
+  padding: 6px;
+  transition: transform 0.45s cubic-bezier(0.16, 1, 0.3, 1), opacity 0.3s ease;
+}
+
+/* Card 1: Tshirt - pure contain so sleeves and hem are never cut */
+.column:nth-child(1) .productImage {
+  object-fit: contain;
+  padding: 8px;
+}
+
+/* Card 2: Cargo pants - vertical contain so waist drawstring to cuffs are fully visible */
+.column:nth-child(2) .productImage {
+  object-fit: contain;
+  padding: 4px;
+}
+
+/* Card 3: Baseball jersey - full hanger & graphic display */
+.column:nth-child(3) .productImage {
+  object-fit: contain;
+  padding: 6px;
+}
+
+/* Card 4: Foam trucker cap - high-fashion closeup on the cap & embroidery */
+.column:nth-child(4) .productImage {
+  object-fit: cover;
+  object-position: center 22%;
+  padding: 0;
+}
+
+.primaryImage {
+  opacity: 1;
+}
+
+.alternateImage {
+  opacity: 0;
+}
+
+/* Flip state or alternate image on hover */
+.column:hover .alternateImage {
+  opacity: 1;
+}
+
+.column:hover .primaryImage {
+  opacity: 0;
+}
+
+/* Badges inside card image */
+.badgeOverlay {
+  position: absolute;
+  top: 8px;
+  left: 8px;
+  display: flex;
+  gap: 6px;
+  z-index: 2;
+}
+
+.tagNewDrop {
+  background: var(--candle-tag-color);
+  color: #06080d;
+  font-family: var(--font-family-mono);
+  font-size: 0.58rem;
+  font-weight: 800;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  padding: 2px 7px;
+  border-radius: 2px;
+}
+
+.tagSoldOut {
+  background: rgba(15, 23, 42, 0.9);
+  color: #e2e8f0;
+  font-family: var(--font-family-mono);
+  font-size: 0.58rem;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  padding: 2px 7px;
+  border-radius: 2px;
+  border: 1px solid rgba(255, 255, 255, 0.2);
+}
+
+:global([data-theme="light"]) .tagSoldOut {
+  background: rgba(241, 245, 249, 0.95);
+  color: #0f172a;
+  border: 1px solid rgba(0, 0, 0, 0.15);
+}
+
+/* Mobile flip toggle button */
+.flipButton {
+  position: absolute;
+  bottom: 8px;
+  right: 8px;
+  z-index: 3;
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  background: var(--candle-card-info-bg);
+  border: 1px solid var(--candle-card-border);
+  color: var(--candle-text-sub);
+  font-family: var(--font-family-mono);
+  font-size: 0.6rem;
+  padding: 3px 7px;
+  border-radius: 9999px;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.flipButton:hover {
+  background: var(--candle-tag-color);
+  color: #06080d;
+  border-color: var(--candle-tag-color);
+}
+
+/* Card Info Panel */
+.cardInfo {
+  padding: 10px 12px;
+  border-top: 1px solid var(--candle-card-info-border);
+  background: var(--candle-card-info-bg);
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  flex-shrink: 0;
+  transition: background-color 0.3s ease;
+}
+
+.productTitle {
+  font-family: var(--font-family-sans);
+  font-size: 0.82rem;
+  font-weight: 700;
+  color: var(--candle-card-title);
+  line-height: 1.25;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  text-transform: uppercase;
+  margin: 0;
+  transition: color 0.3s ease;
+}
+
+.column:nth-child(4) .productTitle {
+  font-size: 0.78rem;
+}
+
+.priceRow {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+}
+
+.price {
+  font-family: var(--font-family-mono);
+  font-size: 0.88rem;
+  font-weight: 700;
+  color: var(--candle-card-price);
+  letter-spacing: -0.01em;
+  transition: color 0.3s ease;
+}
+
+.shopNowBtn {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  font-family: var(--font-family-mono);
+  font-size: 0.64rem;
+  font-weight: 700;
+  color: var(--candle-tag-color);
+  background: rgba(56, 189, 248, 0.08);
+  border: 1px solid var(--candle-wick-color);
+  padding: 4px 8px;
+  border-radius: 2px;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  text-decoration: none;
+  transition: all 0.2s ease;
+}
+
+/* ══════════════════════════════════════════════════════════════════════
+   HOVER INTERACTIONS
+══════════════════════════════════════════════════════════════════════ */
+.column:hover .candleCard {
+  border-color: var(--candle-wick-glow);
+  box-shadow: 0 0 25px rgba(56, 189, 248, 0.2), 0 15px 35px -5px rgba(0, 0, 0, 0.4);
+  transform: translateY(-4px);
+}
+
+:global([data-theme="light"]) .column:hover .candleCard {
+  box-shadow: 0 0 25px rgba(2, 132, 199, 0.2), 0 15px 35px -5px rgba(0, 0, 0, 0.12);
+}
+
+.column:hover .wickTop,
+.column:hover .wickBottom {
+  border-color: var(--candle-wick-glow);
+  filter: drop-shadow(0 0 5px var(--candle-wick-glow));
+}
+
+.column:hover .wickTipTop,
+.column:hover .wickTipBottom {
+  color: var(--candle-wick-glow);
+  font-weight: 700;
+}
+
+.column:hover .productImage {
+  transform: scale(1.05);
+}
+
+.column:hover .shopNowBtn {
+  background: var(--candle-wick-glow);
+  color: #ffffff;
+  border-color: var(--candle-wick-glow);
+}
+
+/* ══════════════════════════════════════════════════════════════════════
+   EDITORIAL NEGATIVE SPACE PLAQUE (Under Card 3 & 4 on Desktop)
+══════════════════════════════════════════════════════════════════════ */
+.lowerRightPlaque {
+  position: absolute;
+  right: 40px;
+  bottom: 24px;
+  width: calc(50% - 36px);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  border: 1px solid var(--candle-plaque-border);
+  border-radius: 3px;
+  padding: 12px 18px;
+  background: var(--candle-plaque-bg);
+  backdrop-filter: blur(8px);
+  z-index: 6;
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.2);
+  transition: all 0.3s ease;
+}
+
+.plaqueLeft {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.plaqueTitle {
+  font-family: var(--font-family-mono);
+  font-size: 0.68rem;
+  font-weight: 700;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--candle-plaque-title);
+  transition: color 0.3s ease;
+}
+
+.plaqueDesc {
+  font-family: var(--font-family-mono);
+  font-size: 0.6rem;
+  color: var(--candle-plaque-desc);
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  transition: color 0.3s ease;
+}
+
+.plaqueBtn {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-family: var(--font-family-sans);
+  font-size: 0.68rem;
+  font-weight: 800;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--candle-tag-color);
+  background: transparent;
+  border: 1px solid var(--candle-wick-color);
+  padding: 6px 12px;
+  border-radius: 9999px;
+  text-decoration: none;
+  white-space: nowrap;
+  transition: all 0.2s ease;
+}
+
+.plaqueBtn:hover {
+  background: var(--candle-wick-glow);
+  color: #ffffff;
+  border-color: var(--candle-wick-glow);
+}
+
+/* ══════════════════════════════════════════════════════════════════════
+   MOBILE CONTROLS (Swipe Navigator)
+══════════════════════════════════════════════════════════════════════ */
+.mobileControls {
+  display: none;
+  margin-top: var(--space-4);
+  padding: 0 var(--space-4);
+}
+
+.mobilePills {
+  display: flex;
+  gap: 8px;
+  justify-content: center;
+  margin-bottom: 8px;
+}
+
+.pillBtn {
+  background: var(--candle-pill-bg);
+  border: 1px solid var(--candle-pill-border);
+  color: var(--candle-pill-text);
+  font-family: var(--font-family-mono);
+  font-size: 0.65rem;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  padding: 6px 12px;
+  border-radius: 9999px;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.pillActive {
+  background: rgba(56, 189, 248, 0.15);
+  border-color: var(--candle-tag-color);
+  color: var(--candle-tag-color);
+}
+
+:global([data-theme="light"]) .pillActive {
+  background: rgba(2, 132, 199, 0.12);
+  border-color: var(--candle-tag-color);
+  color: var(--candle-tag-color);
+}
+
+.mobileSwipeHint {
+  text-align: center;
+  font-family: var(--font-family-mono);
+  font-size: 0.62rem;
+  color: var(--candle-text-counter);
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+}
+
+/* ══════════════════════════════════════════════════════════════════════
+   RESPONSIVE DESIGN (Tablets & Mobile Phones)
+══════════════════════════════════════════════════════════════════════ */
+@media (max-width: 900px) {
+  .section {
+    padding: var(--space-12) 0 var(--space-16) 0;
+  }
+
+  .headline {
+    font-size: clamp(2rem, 8.5vw, 2.8rem);
+  }
+
+  .midRow {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: var(--space-4);
+  }
+
+  .subtitle {
+    max-width: 100%;
+    font-size: 0.85rem;
+  }
+
+  /* Stage container becomes horizontal snap stage */
+  .stageContainer {
+    height: 620px;
+    margin-left: calc(-1 * var(--container-pad));
+    margin-right: calc(-1 * var(--container-pad));
+    width: calc(100% + (2 * var(--container-pad)));
+    border-left: none;
+    border-right: none;
+    border-radius: 0;
+  }
+
+  .gridTrack {
+    display: flex;
+    overflow-x: auto;
+    scroll-snap-type: x mandatory;
+    gap: 16px;
+    padding: 0 var(--container-pad);
+    scrollbar-width: none;
+    -webkit-overflow-scrolling: touch;
+  }
+
+  .gridTrack::-webkit-scrollbar {
+    display: none;
+  }
+
+  .column {
+    flex: 0 0 78vw;
+    max-width: 310px;
+    scroll-snap-align: center;
+    height: 100%;
+  }
+
+  /* Maintain candlestick stair differences while swiping on mobile */
+  .column:nth-child(1) .wickTop { height: 50px; }
+  .column:nth-child(1) .candleCard { height: 440px; }
+  .column:nth-child(1) .wickBottom { min-height: 130px; }
+
+  .column:nth-child(2) .wickTop { height: 30px; }
+  .column:nth-child(2) .candleCard { height: 380px; }
+  .column:nth-child(2) .wickBottom { min-height: 210px; }
+
+  .column:nth-child(3) .wickTop { height: 16px; }
+  .column:nth-child(3) .candleCard { height: 320px; }
+  .column:nth-child(3) .wickBottom { min-height: 284px; }
+
+  .column:nth-child(4) .wickTop { height: 8px; }
+  .column:nth-child(4) .candleCard { height: 260px; }
+  .column:nth-child(4) .wickBottom { min-height: 352px; }
+
+  .lowerRightPlaque {
+    display: none;
+  }
+
+  .mobileControls {
+    display: block;
+  }
+
+  .axisLabelTop, .axisLabelMid, .axisLabelBottom {
+    display: none;
+  }
+}

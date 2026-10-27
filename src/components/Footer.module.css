@@ -1,0 +1,136 @@
+.footer {
+  background-color: #08090b;
+  color: #f8fafc;
+  padding: var(--space-16) 0 var(--space-8) 0;
+  border-top: 1px solid #1f2128;
+  margin-top: auto;
+}
+
+.footerInner {
+  display: grid;
+  grid-template-columns: 1.5fr 1fr 1fr 1fr;
+  gap: var(--space-8);
+  margin-bottom: var(--space-12);
+}
+
+.brandCol {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-4);
+}
+
+.brandLogo {
+  height: 2.75rem;
+  width: auto;
+  object-fit: contain;
+  align-self: flex-start;
+}
+
+.brandDesc {
+  color: #94a3b8;
+  font-size: 0.9rem;
+  line-height: 1.6;
+  max-width: 340px;
+}
+
+.colTitle {
+  font-size: 0.75rem;
+  font-weight: 700;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--accent-vibrant);
+  margin-bottom: var(--space-4);
+}
+
+.linkList {
+  list-style: none;
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+}
+
+.linkItem a {
+  color: #94a3b8;
+  font-size: 0.85rem;
+  transition: color var(--transition-fast);
+}
+
+.linkItem a:hover {
+  color: #ffffff;
+}
+
+.bottomBar {
+  padding-top: var(--space-8);
+  border-top: 1px solid #1f2128;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: var(--space-4);
+  font-size: 0.8rem;
+  color: #94a3b8;
+}
+
+.themeSelectorWrapper {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+}
+
+.themeTogglePill {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  padding: 0.35rem 0.75rem;
+  border-radius: var(--radius-full);
+  background-color: #16181f;
+  border: 1px solid #2a2c36;
+  color: #f8fafc;
+  font-size: 0.75rem;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  cursor: pointer;
+  transition: all var(--transition-fast);
+}
+
+.themeTogglePill:hover {
+  border-color: var(--accent-vibrant);
+  color: var(--accent-vibrant);
+}
+
+.haftechCredit {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+}
+
+.haftechLogo {
+  height: 1.25rem;
+  width: auto;
+  opacity: 0.85;
+  transition: opacity var(--transition-fast);
+}
+
+.haftechLogo:hover {
+  opacity: 1;
+}
+
+@media (max-width: 900px) {
+  .footerInner {
+    grid-template-columns: 1fr 1fr;
+  }
+  .brandCol {
+    grid-column: 1 / -1;
+  }
+}
+
+@media (max-width: 600px) {
+  .footerInner {
+    grid-template-columns: 1fr;
+  }
+  .bottomBar {
+    flex-direction: column;
+    align-items: flex-start;
+  }
+}
