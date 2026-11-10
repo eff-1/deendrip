@@ -376,6 +376,23 @@
   color: var(--bg-dark);
 }
 
+.cartIconWrap {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 18px;
+  height: 18px;
+  flex-shrink: 0;
+  line-height: 1;
+}
+
+.cartIconSvg {
+  width: 18px;
+  height: 18px;
+  display: block;
+  flex-shrink: 0;
+}
+
 .cartBadge {
   background-color: var(--accent-vibrant);
   color: var(--bg-dark);
@@ -760,7 +777,7 @@
   .headerInner {
     padding: 0 var(--space-3);
     height: 3.75rem;
-    gap: var(--space-2);
+    gap: 0.4rem;
   }
 
   .centerSection {
@@ -770,6 +787,7 @@
   /* Inline mobile search toggle button */
   .mobileSearchBtn {
     display: inline-flex;
+    flex-shrink: 0;
   }
 
   .mobileSearchExpandable {
@@ -780,26 +798,95 @@
     display: flex;
     align-items: center;
     justify-content: center;
+    width: 36px;
+    height: 36px;
+    padding: 0;
+    flex-shrink: 0;
   }
 
   .leftSection {
-    gap: var(--space-2);
+    gap: 0.4rem;
+    min-width: 0;
   }
 
   .logoImg {
-    height: 2.1rem;
+    height: 1.95rem;
+    width: auto;
+    max-width: 120px;
   }
 
   .btnText {
     display: none;
   }
 
-  .actionBtn {
-    padding: 0.4rem;
+  .rightSection {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    flex-shrink: 0;
   }
 
+  .actionBtn {
+    width: 36px;
+    height: 36px;
+    min-width: 36px;
+    padding: 0;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    border-radius: var(--radius-full);
+    border: 1px solid var(--border-light);
+    background-color: var(--bg-card);
+    flex-shrink: 0;
+  }
+
+  /* Perfectly centered 36px Bag Icon Box on Mobile */
   .cartBtn {
-    padding: 0.4rem 0.65rem;
+    width: 36px;
+    height: 36px;
+    min-width: 36px;
+    padding: 0;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    position: relative;
+    border-radius: var(--radius-full);
+    flex-shrink: 0;
+  }
+
+  .cartIconWrap {
+    margin: 0;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+  }
+
+  /* Floating top-right notification counter badge */
+  .cartBadge {
+    position: absolute;
+    top: -3px;
+    right: -3px;
+    min-width: 17px;
+    height: 17px;
+    padding: 0 4px;
+    font-size: 0.62rem;
+    font-weight: 800;
+    border-radius: var(--radius-full);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border: 2px solid var(--bg-card);
+    z-index: 2;
+    line-height: 1;
+    pointer-events: none;
+  }
+
+  .navbarScrolled .cartBadge {
+    border-color: rgba(10, 13, 20, 0.95);
+  }
+
+  [data-theme="light"] .navbarScrolled .cartBadge {
+    border-color: #ffffff;
   }
 
   .contactBtnDesktop {
