@@ -54,6 +54,7 @@ export interface CartItem {
   quantity: number;
   imageUrl: string;
   maxStock: number;
+  slug?: string;
 }
 
 export type PaymentStatus = 'pending' | 'paid' | 'failed' | 'refunded';

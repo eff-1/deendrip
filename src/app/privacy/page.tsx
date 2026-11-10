@@ -14,9 +14,7 @@ export default function PrivacyPage() {
           Privacy Policy
         </h1>
 
-        <div style={{ padding: 'var(--space-4) var(--space-6)', backgroundColor: 'var(--sky-50)', border: '1px solid var(--sky-200)', borderRadius: 'var(--radius-xs)', marginBottom: 'var(--space-8)', fontSize: '0.85rem', color: 'var(--sky-700)' }}>
-          <strong>Draft Data Policy:</strong> Demonstrates compliance with the Nigeria Data Protection Act (NDPA) and NDPR standards. Subject to legal ratification.
-        </div>
+
 
         <div style={{ display: 'flex', flexDirection: 'column', gap: 'var(--space-6)', color: 'var(--text-secondary)', lineHeight: '1.7', fontSize: '0.95rem' }}>
           <section>

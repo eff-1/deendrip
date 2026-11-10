@@ -13,7 +13,8 @@ interface CandleDropSectionProps {
 
 export default function CandleDropSection({ products }: CandleDropSectionProps) {
   const [activeStep, setActiveStep] = useState<number>(0);
-  const [flippedCards, setFlippedCards] = useState<Record<string, boolean>>({});
+  const [hoveredCardId, setHoveredCardId] = useState<string | null>(null);
+  const [cardViewModes, setCardViewModes] = useState<Record<string, 'auto' | 'front' | 'back'>>({});
   const trackRef = useRef<HTMLDivElement>(null);
 
   // Take the first 4 products for the 4 candlestick columns
@@ -46,10 +47,13 @@ export default function CandleDropSection({ products }: CandleDropSectionProps) 
     }
   };
 
-  const toggleFlip = (e: React.MouseEvent, productId: string) => {
+  const toggleFlip = (e: React.MouseEvent, productId: string, currentlyShowingBack: boolean) => {
     e.preventDefault();
     e.stopPropagation();
-    setFlippedCards(prev => ({ ...prev, [productId]: !prev[productId] }));
+    setCardViewModes(prev => ({
+      ...prev,
+      [productId]: currentlyShowingBack ? 'front' : 'back',
+    }));
   };
 
   return (
@@ -61,10 +65,10 @@ export default function CandleDropSection({ products }: CandleDropSectionProps) 
           <div className={styles.topRow}>
             <div className={styles.dropTag}>
               <span className={styles.pulseDot} />
-              <span>NEW DROP · VOL.02 / AW26</span>
+              <span>NEW DROP · VOL.02</span>
             </div>
             <div className={styles.dropCounter}>
-              [ 04 ITEMS ACTIVE IN STAGE ]
+              {dropProducts.length} PIECES LIVE
             </div>
           </div>
 
@@ -72,7 +76,7 @@ export default function CandleDropSection({ products }: CandleDropSectionProps) 
 
           <div className={styles.midRow}>
             <p className={styles.subtitle}>
-              A visual dialogue between contemporary street culture and uncompromising faith. Designed in-house with custom heavyweight textures, signature paneling, and hand-drawn script.
+              Custom heavyweight textures, signature paneling, and hand-drawn script. Designed in-house.
             </p>
             <Link href="/shop" className={styles.viewAllTopBtn}>
               VIEW ALL PRODUCTS <span className={styles.arrowIcon}>→</span>
@@ -104,10 +108,35 @@ export default function CandleDropSection({ products }: CandleDropSectionProps) 
           {/* ── 4 Candlestick Columns ── */}
           <div className={styles.gridTrack} ref={trackRef}>
             {dropProducts.map((product, i) => {
-              const primaryImage = product.images.find(img => img.isPrimary) || product.images[0];
-              const alternateImage = product.images.find(img => img.isAlternate) || product.images[1] || primaryImage;
+              const isCargoPants = product.slug === 'multi-colored-jean-cargo-pants-style-1' || product.id === 'prod-multi-colored-jean-cargo-pants-style-1';
+              const isTruckerCap = product.slug === 'multi-colored-foam-truckers-style-1' || product.id === 'prod-multi-colored-foam-truckers-style-1';
+
+              const rawPrimary = product.images.find(img => img.isPrimary) || product.images[0];
+              const primaryImage = isCargoPants
+                ? {
+                    ...rawPrimary,
+                    imageUrl: '/assets/products/multi-colored-jean-cargo-pants-featured.png',
+                    altText: 'Multi colored Jean cargo pants - AW26 Drop View'
+                  }
+                : isTruckerCap
+                ? {
+                    ...rawPrimary,
+                    imageUrl: '/assets/products/multi-colored-foam-truckers-featured.jpg',
+                    altText: 'Multi colored foam truckers - AW26 Drop View'
+                  }
+                : rawPrimary;
+
+              const alternateImage = isCargoPants
+                ? (product.images.find(img => img.imageUrl.includes('side')) || product.images.find(img => img.isAlternate) || rawPrimary)
+                : isTruckerCap
+                ? (product.images.find(img => img.imageUrl.includes('model-male')) || product.images.find(img => img.isAlternate) || rawPrimary)
+                : (product.images.find(img => img.isAlternate) || product.images[1] || primaryImage);
+
               const hasAlternate = alternateImage && alternateImage.imageUrl !== primaryImage?.imageUrl;
-              const isFlipped = !!flippedCards[product.id];
+
+              const viewMode = cardViewModes[product.id] || 'auto';
+              const isHovered = hoveredCardId === product.id;
+              const isShowingBack = Boolean(hasAlternate && (viewMode === 'back' || (viewMode === 'auto' && isHovered)));
 
               const totalStock = product.variants.reduce((sum, v) => sum + v.stockQuantity, 0);
               const isOutOfStock = totalStock <= 0;
@@ -119,6 +148,11 @@ export default function CandleDropSection({ products }: CandleDropSectionProps) 
                   key={product.id}
                   className={styles.column}
                   onClick={() => setActiveStep(i)}
+                  onMouseEnter={() => setHoveredCardId(product.id)}
+                  onMouseLeave={() => {
+                    setHoveredCardId(null);
+                    setCardViewModes(prev => ({ ...prev, [product.id]: 'auto' }));
+                  }}
                 >
                   {/* Top Wick */}
                   <div className={styles.wickTop}>
@@ -126,11 +160,7 @@ export default function CandleDropSection({ products }: CandleDropSectionProps) 
                   </div>
 
                   {/* Candle Card Body */}
-                  <Link
-                    href={`/products/${product.slug}`}
-                    className={styles.candleCard}
-                    aria-label={`View ${product.name}`}
-                  >
+                  <div className={styles.candleCard}>
                     {/* Header Row: Category & Spec */}
                     <div className={styles.cardHeader}>
                       <div>
@@ -141,28 +171,43 @@ export default function CandleDropSection({ products }: CandleDropSectionProps) 
                     </div>
 
                     {/* Image Area */}
-                    <div className={styles.cardImageWrapper}>
-                      {primaryImage && (
-                        <Image
-                          src={isFlipped && hasAlternate ? alternateImage.imageUrl : primaryImage.imageUrl}
-                          alt={primaryImage.altText || product.name}
-                          fill
-                          sizes="(max-width: 640px) 78vw, (max-width: 1024px) 30vw, 25vw"
-                          className={`${styles.productImage} ${styles.primaryImage}`}
-                          priority={i < 2}
-                        />
-                      )}
+                    <div className={`${styles.cardImageWrapper} ${isShowingBack ? styles.showBack : styles.showFront}`}>
+                      <Link
+                        href={`/products/${product.slug}`}
+                        className={styles.imageLink}
+                        aria-label={`View ${product.name}`}
+                      >
+                        {primaryImage && (
+                          <Image
+                            src={primaryImage.imageUrl}
+                            alt={primaryImage.altText || product.name}
+                            fill
+                            sizes="(max-width: 640px) 78vw, (max-width: 1024px) 30vw, 25vw"
+                            className={`${styles.productImage} ${styles.primaryImage}`}
+                            priority={i < 2}
+                            style={{
+                              opacity: isShowingBack ? 0 : 1,
+                              zIndex: isShowingBack ? 1 : 2,
+                              transition: 'opacity 0.35s ease',
+                            }}
+                          />
+                        )}
 
-                      {/* Alternate image pre-render for smooth hover transitions on desktop */}
-                      {hasAlternate && !isFlipped && (
-                        <Image
-                          src={alternateImage.imageUrl}
-                          alt={alternateImage.altText || `${product.name} back view`}
-                          fill
-                          sizes="(max-width: 640px) 78vw, (max-width: 1024px) 30vw, 25vw"
-                          className={`${styles.productImage} ${styles.alternateImage}`}
-                        />
-                      )}
+                        {hasAlternate && (
+                          <Image
+                            src={alternateImage.imageUrl}
+                            alt={alternateImage.altText || `${product.name} back view`}
+                            fill
+                            sizes="(max-width: 640px) 78vw, (max-width: 1024px) 30vw, 25vw"
+                            className={`${styles.productImage} ${styles.alternateImage}`}
+                            style={{
+                              opacity: isShowingBack ? 1 : 0,
+                              zIndex: isShowingBack ? 2 : 1,
+                              transition: 'opacity 0.35s ease',
+                            }}
+                          />
+                        )}
+                      </Link>
 
                       {/* Status Badges */}
                       <div className={styles.badgeOverlay}>
@@ -170,15 +215,15 @@ export default function CandleDropSection({ products }: CandleDropSectionProps) 
                         {isOutOfStock && <span className={styles.tagSoldOut}>Sold Out</span>}
                       </div>
 
-                      {/* Flip button for mobile / alternate image toggle */}
+                      {/* Alternate view flip button */}
                       {hasAlternate && (
                         <button
                           type="button"
-                          className={styles.flipButton}
-                          onClick={(e) => toggleFlip(e, product.id)}
-                          aria-label={isFlipped ? 'Show front image' : 'Show back image'}
+                          className={`${styles.flipButton} ${isShowingBack ? styles.flipActive : ''}`}
+                          onClick={(e) => toggleFlip(e, product.id, isShowingBack)}
+                          aria-label={isShowingBack ? 'Show main view' : 'Show alt view'}
                         >
-                          <span>{isFlipped ? 'Front' : 'Back'}</span>
+                          <span>{isShowingBack ? 'Main View' : 'Alt View'}</span>
                           <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
                             <path d="M21 12a9 9 0 0 0-9-9 9.75 9.75 0 0 0-6.74 2.74L3 8" />
                             <path d="M3 3v5h5" />
@@ -191,15 +236,17 @@ export default function CandleDropSection({ products }: CandleDropSectionProps) 
 
                     {/* Card Info Panel */}
                     <div className={styles.cardInfo}>
-                      <h3 className={styles.productTitle}>{product.name}</h3>
+                      <Link href={`/products/${product.slug}`} className={styles.productTitleLink}>
+                        <h3 className={styles.productTitle}>{product.name}</h3>
+                      </Link>
                       <div className={styles.priceRow}>
                         <span className={styles.price}>{formatNaira(product.priceKobo)}</span>
-                        <span className={styles.shopNowBtn}>
+                        <Link href={`/products/${product.slug}`} className={styles.shopNowBtn}>
                           {isOutOfStock ? 'Sold Out' : 'Shop Now →'}
-                        </span>
+                        </Link>
                       </div>
                     </div>
-                  </Link>
+                  </div>
 
                   {/* Bottom Wick */}
                   <div className={styles.wickBottom}>

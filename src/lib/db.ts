@@ -4,6 +4,7 @@ import path from 'node:path';
 import fs from 'node:fs';
 import { hashPassword } from './auth';
 import type { Product, ProductVariant, ProductImage, Order, OrderItem, Category, PaymentStatus, FulfillmentStatus } from './types';
+import { calculateOrderShipping } from './shipping';
 
 let dbInstance: DatabaseSync | null = null;
 
@@ -312,7 +313,7 @@ function seedStoreSettings(db: DatabaseSync) {
       subtext: 'A collision of faith, identity, and modern streetwear.',
       ctaLabel: 'Shop the Collection',
       ctaHref: '/shop',
-      bgImage: '/assets/campaign/hero-arch-bg.webp',
+      bgImage: '/assets/campaign/hero-brutalist-concrete-bg.jpg',
       modelImage: '/assets/campaign/hero-models-duo-clean.png',
       isActive: true,
     }
@@ -997,26 +998,26 @@ export function getAllDeliveryZones(): DeliveryZone[] {
     }));
 }
 
-export function calculateDeliveryFee(deliveryState: string, subtotalKobo: number): number {
-  const zones = getDeliveryZones();
-  const stateLower = deliveryState.trim().toLowerCase();
-
-  // Try specific state match first
-  for (const zone of zones) {
-    if (zone.stateMatch !== '__nationwide__' && stateLower.includes(zone.stateMatch.toLowerCase())) {
-      if (zone.freeThresholdKobo !== null && subtotalKobo >= zone.freeThresholdKobo) return 0;
-      return zone.feeKobo;
-    }
+export function calculateDeliveryFee(
+  deliveryState: string,
+  subtotalKobo: number,
+  deliveryCity: string = '',
+  deliveryAddress: string = '',
+  totalWeightKg: number = 1.0
+): number {
+  try {
+    const result = calculateOrderShipping({
+      state: deliveryState,
+      city: deliveryCity,
+      address: deliveryAddress,
+      subtotalKobo,
+      totalWeightKg,
+    });
+    return result.deliveryFeeKobo;
+  } catch {
+    // Fallback if unexpected error occurs
+    return deliveryState.toLowerCase().includes('lagos') ? 350000 : 750000;
   }
-
-  // Fall back to nationwide
-  const nationwide = zones.find(z => z.stateMatch === '__nationwide__');
-  if (nationwide) {
-    if (nationwide.freeThresholdKobo !== null && subtotalKobo >= nationwide.freeThresholdKobo) return 0;
-    return nationwide.feeKobo;
-  }
-
-  return 650000; // last-resort fallback
 }
 
 export function updateDeliveryZone(id: string, data: Partial<Omit<DeliveryZone, 'id'>>): boolean {

@@ -5,7 +5,7 @@ import type { CartItem } from '@/lib/types';
 
 interface CartContextType {
   items: CartItem[];
-  addItem: (item: CartItem) => void;
+  addItem: (item: CartItem, openDrawer?: boolean) => void;
   removeItem: (variantId: string) => void;
   updateQuantity: (variantId: string, quantity: number) => void;
   clearCart: () => void;
@@ -45,7 +45,7 @@ export function CartProvider({ children }: { children: ReactNode }) {
     }
   }, [items, isMounted]);
 
-  const addItem = (newItem: CartItem) => {
+  const addItem = (newItem: CartItem, openDrawer: boolean = false) => {
     setItems(currentItems => {
       const existingIndex = currentItems.findIndex(i => i.variantId === newItem.variantId);
       if (existingIndex > -1) {
@@ -55,13 +55,16 @@ export function CartProvider({ children }: { children: ReactNode }) {
         updated[existingIndex] = {
           ...updated[existingIndex],
           quantity: newQty,
+          slug: newItem.slug || updated[existingIndex].slug,
         };
         return updated;
       } else {
         return [...currentItems, newItem];
       }
     });
-    setIsCartOpen(true);
+    if (openDrawer) {
+      setIsCartOpen(true);
+    }
   };
 
   const removeItem = (variantId: string) => {

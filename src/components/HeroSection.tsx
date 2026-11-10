@@ -1,38 +1,131 @@
 'use client';
 
-import React from 'react';
+import React, { useState, useEffect } from 'react';
 import Link from 'next/link';
 import Image from 'next/image';
 import styles from './HeroSection.module.css';
 
+interface SceneConfig {
+  id: number;
+  label: string;
+  bgType: 'image' | 'video';
+  bgSrc: string;
+  bgAlt: string;
+  hasRightColumnModel: boolean;
+  modelSrc: string;
+  modelAlt: string;
+}
+
+const SCENES: SceneConfig[] = [
+  {
+    id: 0,
+    label: '01 // ARCH ATRIUM',
+    bgType: 'image',
+    bgSrc: '/assets/campaign/hero-arch-bg.webp',
+    bgAlt: 'Deen Drip Signature Brutalist Arch Atrium',
+    hasRightColumnModel: true,
+    modelSrc: '/assets/campaign/hero-models-duo-clean.png',
+    modelAlt: 'Deen Drip Streetwear Models Duo',
+  },
+  {
+    id: 1,
+    label: '02 // BRUTALIST',
+    bgType: 'image',
+    bgSrc: '/assets/campaign/hero-brutalist-concrete-bg.jpg',
+    bgAlt: 'Deen Drip Brutalist Concrete Architectural Space',
+    hasRightColumnModel: true,
+    modelSrc: '/assets/campaign/hero-models-duo-clean.png',
+    modelAlt: 'Deen Drip Streetwear Models Duo',
+  },
+  {
+    id: 2,
+    label: '03 // ARCH FILM',
+    bgType: 'video',
+    bgSrc: '/assets/campaign/hero-architectural-models-composite.mp4',
+    bgAlt: 'Deen Drip Campaign Architectural Film with Models',
+    hasRightColumnModel: false,
+    modelSrc: '',
+    modelAlt: '',
+  },
+];
+
 export default function HeroSection() {
+  const [activeBgIndex, setActiveBgIndex] = useState(0); // 0 = Initial Arch Atrium, 1 = Brutalist Concrete, 2 = Arch Film Video
+
+  // 10 minutes interval rotation across all 3 backgrounds as requested
+  useEffect(() => {
+    const interval = setInterval(() => {
+      setActiveBgIndex(prev => (prev + 1) % SCENES.length);
+    }, 10 * 60 * 1000); // 10 minutes (600,000ms)
+    return () => clearInterval(interval);
+  }, []);
+
+  const activeScene = SCENES[activeBgIndex];
+
   return (
     <section className={styles.hero} aria-label="AW-26 Campaign Hero">
-      {/* 1. LAYER 1: 2.5K Ultra Clean High-Definition Architectural Background */}
-      <Image
-        src="/assets/campaign/hero-arch-bg.webp"
-        alt="Deen Drip Brutalist Architectural Arch Space"
-        fill
-        priority
-        sizes="100vw"
-        className={styles.heroBgImage}
-      />
+      {/* 1. LAYER 1: Triple Rotating Background (10-minute interval + smooth crossfade) */}
+      
+      {/* Background Scene 0: Initial Signature Brutalist Arch Atrium */}
+      <div className={`${styles.heroBgLayer} ${activeBgIndex === 0 ? styles.heroBgActive : styles.heroBgInactive}`}>
+        <Image
+          src="/assets/campaign/hero-arch-bg.webp"
+          alt="Deen Drip Signature Brutalist Arch Atrium"
+          fill
+          priority
+          quality={92}
+          sizes="100vw"
+          className={styles.heroBgImage}
+        />
+      </div>
+
+      {/* Background Scene 1: Brutalist Concrete Architectural Photo */}
+      <div className={`${styles.heroBgLayer} ${activeBgIndex === 1 ? styles.heroBgActive : styles.heroBgInactive}`}>
+        <Image
+          src="/assets/campaign/hero-brutalist-concrete-bg.jpg"
+          alt="Deen Drip Brutalist Concrete Architectural Space"
+          fill
+          priority
+          quality={92}
+          sizes="100vw"
+          className={styles.heroBgImage}
+        />
+      </div>
+
+      {/* Background Scene 2: Full-Bleed Architectural Film Video with Models (Full 1080p cinema scale, no clipped arms) */}
+      <div className={`${styles.heroBgLayer} ${activeBgIndex === 2 ? styles.heroBgActive : styles.heroBgInactive}`}>
+        <video
+          autoPlay
+          loop
+          muted
+          playsInline
+          className={styles.heroBgVideo}
+        >
+          <source src="/assets/campaign/hero-architectural-models-composite.mp4" type="video/mp4" />
+        </video>
+        {/* Soft left gradient vignette for high text contrast in video scene */}
+        <div className={styles.videoTextContrastBackdrop} />
+      </div>
 
       {/* Ambient luxury backlighting and arc glow */}
       <div className={styles.mobileAmbientGlow} />
       <div className={styles.mobileArcGlow} />
 
-      {/* 2. LAYER 2 (Mobile only): Background Model layer positioned in lower-mid area */}
-      <div className={styles.mobileModelLayer}>
-        <Image
-          src="/assets/campaign/hero-models-duo-clean.png"
-          alt="Deen Drip Streetwear Models"
-          fill
-          priority
-          sizes="(max-width: 900px) 100vw, 50vw"
-          className={styles.mobileModelImage}
-        />
-      </div>
+      {/* 2. LAYER 2 (Mobile only): Model overlay on static image scenes */}
+      {activeScene.hasRightColumnModel && (
+        <div className={styles.mobileModelLayer}>
+          <Image
+            key={`mobile-image-model-${activeScene.id}`}
+            src={activeScene.modelSrc}
+            alt={activeScene.modelAlt}
+            fill
+            priority
+            quality={92}
+            sizes="(max-width: 900px) 100vw, 50vw"
+            className={styles.mobileModelImage}
+          />
+        </div>
+      )}
 
       {/* 3. LAYER 3: Dark contrast vignette overlay for mobile readability */}
       <div className={styles.heroVignette} />
@@ -116,22 +209,43 @@ export default function HeroSection() {
 
           </div>
 
-          {/* Desktop Right Column: Model Showcase */}
+          {/* Desktop Right Column: Model Showcase (Active for image scenes) */}
           <div className={styles.modelShowcaseDesktop}>
-            <div className={styles.groundShadow} />
-
-            <div className={styles.modelContainer}>
-              <Image
-                src="/assets/campaign/hero-models-duo-clean.png"
-                alt="Deen Drip Streetwear Models"
-                fill
-                priority
-                sizes="(max-width: 900px) 95vw, 600px"
-                className={styles.modelImage}
-              />
-            </div>
+            {activeScene.hasRightColumnModel ? (
+              <>
+                <div className={styles.groundShadow} />
+                <div className={styles.modelContainer}>
+                  <Image
+                    key={`desktop-image-model-${activeScene.id}`}
+                    src={activeScene.modelSrc}
+                    alt={activeScene.modelAlt}
+                    fill
+                    priority
+                    quality={92}
+                    sizes="(max-width: 900px) 95vw, 600px"
+                    className={styles.modelImage}
+                  />
+                </div>
+              </>
+            ) : null}
           </div>
         </div>
+      </div>
+
+      {/* Discrete Luxury Scene Switcher Pill (10-minute automatic cycle + instant preview toggle) */}
+      <div className={styles.sceneSwitcher} aria-label="Scene selector">
+        {SCENES.map((scene, idx) => (
+          <button
+            key={scene.id}
+            type="button"
+            onClick={() => setActiveBgIndex(idx)}
+            className={`${styles.sceneBtn} ${activeBgIndex === idx ? styles.sceneBtnActive : ''}`}
+            title={`Switch to ${scene.label}`}
+          >
+            <span className={styles.sceneDot} />
+            <span>{scene.label}</span>
+          </button>
+        ))}
       </div>
     </section>
   );

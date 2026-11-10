@@ -3,6 +3,7 @@ import Link from 'next/link';
 import { notFound } from 'next/navigation';
 import { getOrderByReference } from '@/lib/db';
 import { formatNaira, formatDate } from '@/lib/formatters';
+import DeliveryTrackingMap from '@/components/DeliveryTrackingMap';
 import styles from './order.module.css';
 
 export const dynamic = 'force-dynamic';
@@ -88,7 +89,17 @@ export default async function OrderConfirmationPage({
             </div>
           </div>
 
-          <div style={{ backgroundColor: 'var(--bg-secondary)', padding: 'var(--space-4)', borderRadius: 'var(--radius-xs)', fontSize: '0.82rem', color: 'var(--text-secondary)' }}>
+          {/* Interactive Delivery Tracking & Route Monitor */}
+          <DeliveryTrackingMap
+            orderReference={order.orderReference}
+            deliveryAddress={order.deliveryAddress}
+            deliveryCity={order.deliveryCity}
+            deliveryState={order.deliveryState}
+            fulfillmentStatus={order.fulfillmentStatus}
+            deliveryFeeKobo={order.deliveryFeeKobo}
+          />
+
+          <div style={{ backgroundColor: 'var(--bg-secondary)', padding: 'var(--space-4)', borderRadius: 'var(--radius-xs)', fontSize: '0.82rem', color: 'var(--text-secondary)', marginTop: 'var(--space-4)' }}>
             <p>
               <strong>Order Tracking & Updates:</strong> Our fulfillment hub in Lagos prepares all orders within 24 hours. You will receive dispatch notifications via SMS and WhatsApp. For support or modifications, reach out to <strong>orders@deendrip.com</strong> with your reference #{order.orderReference}.
             </p>

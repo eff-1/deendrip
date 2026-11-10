@@ -1,8 +1,9 @@
 'use client';
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import Link from 'next/link';
 import Image from 'next/image';
+import { usePathname } from 'next/navigation';
 import { useCart } from '@/context/CartContext';
 import { useTheme } from '@/context/ThemeContext';
 import SearchBar from '@/components/SearchBar';
@@ -10,6 +11,9 @@ import AccountModal from '@/components/AccountModal';
 import styles from './Navbar.module.css';
 
 export default function Navbar() {
+  const pathname = usePathname();
+  const isHomePage = pathname === '/';
+
   const { itemCount, setIsCartOpen } = useCart();
   const { theme, toggleTheme } = useTheme();
 
@@ -18,10 +22,103 @@ export default function Navbar() {
   const [mobileSearchOpen, setMobileSearchOpen] = useState(false);
   const [isAccountOpen, setIsAccountOpen] = useState(false);
   const [customerName, setCustomerName] = useState<string | null>(null);
+  const [accountDropdownOpen, setAccountDropdownOpen] = useState(false);
+  const accountMenuRef = useRef<HTMLDivElement>(null);
+
+  // Cart badge bounce animation state
+  const [cartBump, setCartBump] = useState(false);
+  const prevCountRef = useRef(itemCount);
+
+  useEffect(() => {
+    if (itemCount > prevCountRef.current) {
+      setCartBump(true);
+      const timer = setTimeout(() => setCartBump(false), 600);
+      return () => clearTimeout(timer);
+    }
+    prevCountRef.current = itemCount;
+  }, [itemCount]);
 
   // Announcement ad banner states (delayed flash-in + dismiss)
   const [announcementVisible, setAnnouncementVisible] = useState(false);
   const [announcementDismissed, setAnnouncementDismissed] = useState(false);
+
+  // Scroll detection: hide on scroll down, reveal liquid glass capsule on scroll up
+  const [isScrolled, setIsScrolled] = useState(false);
+  const [isVisible, setIsVisible] = useState(true);
+  const isScrolledRef = useRef(false);
+  const isVisibleRef = useRef(true);
+  const lastScrollYRef = useRef(0);
+
+  useEffect(() => {
+    let ticking = false;
+    let accumulatedUpScroll = 0;
+    let accumulatedDownScroll = 0;
+
+    const handleScroll = () => {
+      if (!ticking) {
+        window.requestAnimationFrame(() => {
+          const currentScrollY = Math.max(0, window.scrollY);
+          const lastScrollY = lastScrollYRef.current;
+          const diff = currentScrollY - lastScrollY;
+
+          // 1. At the very top (within 25px)
+          if (currentScrollY <= 25) {
+            accumulatedUpScroll = 0;
+            accumulatedDownScroll = 0;
+            if (isScrolledRef.current) {
+              isScrolledRef.current = false;
+              setIsScrolled(false);
+            }
+            if (!isVisibleRef.current) {
+              isVisibleRef.current = true;
+              setIsVisible(true);
+            }
+          } else {
+            // Once scrolled past 25px: liquid glass capsule state active
+            if (!isScrolledRef.current) {
+              isScrolledRef.current = true;
+              setIsScrolled(true);
+            }
+
+            if (diff < 0) {
+              // Scrolling UP
+              accumulatedDownScroll = 0;
+              accumulatedUpScroll += Math.abs(diff);
+
+              // Responsive upward toggle: immediately reveal upon >= 3px upward scroll or near top
+              if (accumulatedUpScroll >= 3 || currentScrollY < 140) {
+                if (!isVisibleRef.current) {
+                  isVisibleRef.current = true;
+                  setIsVisible(true);
+                }
+              }
+            } else if (diff > 0) {
+              // Scrolling DOWN
+              accumulatedUpScroll = 0;
+              accumulatedDownScroll += diff;
+
+              // Smooth hide: deliberate downward swipe >= 8px past header threshold
+              if (accumulatedDownScroll >= 8 && currentScrollY > 70) {
+                if (!mobileMenuOpen && !accountDropdownOpen && !mobileSearchOpen) {
+                  if (isVisibleRef.current) {
+                    isVisibleRef.current = false;
+                    setIsVisible(false);
+                  }
+                }
+              }
+            }
+          }
+
+          lastScrollYRef.current = currentScrollY;
+          ticking = false;
+        });
+        ticking = true;
+      }
+    };
+
+    window.addEventListener('scroll', handleScroll, { passive: true });
+    return () => window.removeEventListener('scroll', handleScroll);
+  }, [mobileMenuOpen, accountDropdownOpen, mobileSearchOpen]);
 
   // Initial customer & announcement storage check
   useEffect(() => {
@@ -42,6 +139,17 @@ export default function Navbar() {
         return () => clearTimeout(timer);
       }
     } catch {}
+  }, []);
+
+  // Close account dropdown on outside click
+  useEffect(() => {
+    const handleClickOutside = (event: MouseEvent) => {
+      if (accountMenuRef.current && !accountMenuRef.current.contains(event.target as Node)) {
+        setAccountDropdownOpen(false);
+      }
+    };
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => document.removeEventListener('mousedown', handleClickOutside);
   }, []);
 
   // Lock body scroll when mobile menu is open (only drawer scrolls)
@@ -67,36 +175,51 @@ export default function Navbar() {
     } catch {}
   };
 
-  const logoSrc = theme === 'dark'
+  const logoSrc = (theme === 'dark' || (isHomePage && !isScrolled))
     ? '/assets/brand/deen-drip-logo-white.png'
     : '/assets/brand/deen-drip-logo-black.png';
 
   return (
     <>
-      {/* 1. Top Announcement Bar (Subtle, delayed slide-in like an ad banner, dismissible) */}
-      {announcementVisible && !announcementDismissed && (
-        <div className={styles.announcementBar}>
-          <span className={styles.announcementText}>
-            FREE DELIVERY IN LAGOS ON ORDERS OVER ₦85,000 • NEW AW-26 DROP LIVE
-          </span>
-          <button
-            type="button"
-            onClick={handleDismissAnnouncement}
-            className={styles.announcementDismissBtn}
-            aria-label="Dismiss announcement"
-            title="Dismiss announcement"
-          >
-            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
-              <line x1="18" y1="6" x2="6" y2="18" />
-              <line x1="6" y1="6" x2="18" y2="18" />
-            </svg>
-          </button>
-        </div>
+      {/* Spacer for non-homepage views so page content never hides behind fixed navbar */}
+      {!isHomePage && (
+        <div
+          className={styles.navbarSpacer}
+          style={{
+            height: announcementVisible && !announcementDismissed ? 'calc(4.5rem + 1.85rem)' : '4.5rem',
+          }}
+          aria-hidden="true"
+        />
       )}
 
-      {/* 2. Main Header */}
-      <header className={styles.header}>
-        <div className={styles.headerInner}>
+      {/* Unified Fixed Navbar Root */}
+      <nav
+        className={`${styles.navbarRoot} ${isScrolled ? styles.navbarScrolled : ''} ${isVisible ? styles.navbarVisible : styles.navbarHidden}`}
+      >
+        {/* 1. Top Announcement Bar (In DOM, cleanly hidden via CSS in .navbarScrolled state) */}
+        {announcementVisible && !announcementDismissed && (
+          <div className={styles.announcementBar}>
+            <span className={styles.announcementText}>
+              FREE DELIVERY IN LAGOS ON ORDERS OVER ₦85,000 • NEW AW-26 DROP LIVE
+            </span>
+            <button
+              type="button"
+              onClick={handleDismissAnnouncement}
+              className={styles.announcementDismissBtn}
+              aria-label="Dismiss announcement"
+              title="Dismiss announcement"
+            >
+              <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
+                <line x1="18" y1="6" x2="6" y2="18" />
+                <line x1="6" y1="6" x2="18" y2="18" />
+              </svg>
+            </button>
+          </div>
+        )}
+
+        {/* 2. Main Header */}
+        <header className={`${styles.header} ${isHomePage && !isScrolled ? styles.headerHome : ''}`}>
+          <div className={styles.headerInner}>
           {/* LEFT: Mobile Hamburger + Brand Logo + Desktop Nav */}
           <div className={styles.leftSection}>
             {/* Mobile Hamburger Drawer Trigger */}
@@ -162,21 +285,218 @@ export default function Navbar() {
               </svg>
             </button>
 
-            {/* Customer Account Button */}
-            <button
-              type="button"
-              onClick={() => setIsAccountOpen(true)}
-              className={styles.actionBtn}
-              aria-label="Account login or register"
+            {/* Customer Account Button with Desktop Dropdown (Jumia Reference) */}
+            <div
+              className={styles.accountWrapper}
+              ref={accountMenuRef}
+              onMouseEnter={() => {
+                if (typeof window !== 'undefined' && window.innerWidth > 768) {
+                  setAccountDropdownOpen(true);
+                }
+              }}
+              onMouseLeave={() => {
+                if (typeof window !== 'undefined' && window.innerWidth > 768) {
+                  setAccountDropdownOpen(false);
+                }
+              }}
             >
-              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2" />
-                <circle cx="12" cy="7" r="4" />
-              </svg>
-              <span className={styles.btnText}>
-                {customerName ? customerName : 'Account'}
-              </span>
-            </button>
+              <button
+                type="button"
+                onClick={() => {
+                  if (typeof window !== 'undefined' && window.innerWidth <= 768) {
+                    setIsAccountOpen(true);
+                  } else {
+                    setAccountDropdownOpen(prev => !prev);
+                  }
+                }}
+                className={`${styles.actionBtn} ${accountDropdownOpen ? styles.actionBtnActive : ''}`}
+                aria-label="Account login, orders, wishlist and vouchers"
+                aria-expanded={accountDropdownOpen}
+              >
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                  <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2" />
+                  <circle cx="12" cy="7" r="4" />
+                </svg>
+                <span className={styles.btnText}>
+                  {customerName ? `Hi, ${customerName.split(' ')[0]}` : 'Account'}
+                </span>
+                <svg
+                  width="10"
+                  height="10"
+                  viewBox="0 0 24 24"
+                  fill="none"
+                  stroke="currentColor"
+                  strokeWidth="2.5"
+                  className={`${styles.dropdownChevron} ${accountDropdownOpen ? styles.dropdownChevronOpen : ''}`}
+                >
+                  <polyline points="6 9 12 15 18 9" />
+                </svg>
+              </button>
+
+              {/* Desktop Dropdown Popover */}
+              {accountDropdownOpen && (
+                <div className={styles.accountDropdown}>
+                  {customerName ? (
+                    <>
+                      <div className={styles.dropdownUserBanner}>
+                        <div className={styles.dropdownAvatarSmall}>
+                          {customerName.charAt(0).toUpperCase()}
+                        </div>
+                        <div className={styles.dropdownUserBannerText}>
+                          <span className={styles.dropdownUserName}>Hi, {customerName}</span>
+                          <span className={styles.dropdownUserStatus}>✓ Verified Member</span>
+                        </div>
+                      </div>
+
+                      <div className={styles.dropdownList}>
+                        <button
+                          type="button"
+                          className={styles.dropdownItem}
+                          onClick={() => {
+                            setAccountDropdownOpen(false);
+                            setIsAccountOpen(true);
+                          }}
+                        >
+                          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                            <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2" />
+                            <circle cx="12" cy="7" r="4" />
+                          </svg>
+                          <span>My Account</span>
+                        </button>
+
+                        <Link
+                          href="/shop"
+                          className={styles.dropdownItem}
+                          onClick={() => setAccountDropdownOpen(false)}
+                        >
+                          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                            <path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z" />
+                            <polyline points="3.27 6.96 12 12.01 20.73 6.96" />
+                            <line x1="12" y1="22.08" x2="12" y2="12" />
+                          </svg>
+                          <span>Orders & Tracking</span>
+                        </Link>
+
+                        <Link
+                          href="/wishlist"
+                          className={styles.dropdownItem}
+                          onClick={() => setAccountDropdownOpen(false)}
+                        >
+                          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                            <path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z" />
+                          </svg>
+                          <span>Saved Items / Wishlist</span>
+                        </Link>
+
+                        <button
+                          type="button"
+                          className={styles.dropdownItem}
+                          onClick={() => {
+                            setAccountDropdownOpen(false);
+                            setIsAccountOpen(true);
+                          }}
+                        >
+                          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                            <rect x="2" y="4" width="20" height="16" rx="2" />
+                            <line x1="2" y1="10" x2="22" y2="10" />
+                          </svg>
+                          <span>Vouchers (2 Available)</span>
+                        </button>
+                      </div>
+
+                      <div className={styles.dropdownDivider} />
+
+                      <button
+                        type="button"
+                        className={styles.dropdownLogoutBtn}
+                        onClick={() => {
+                          try {
+                            localStorage.removeItem('deendrip_customer');
+                          } catch {}
+                          setCustomerName(null);
+                          setAccountDropdownOpen(false);
+                        }}
+                      >
+                        Logout
+                      </button>
+                    </>
+                  ) : (
+                    <>
+                      <div className={styles.dropdownAuthPrompt}>
+                        <button
+                          type="button"
+                          className={`btn btn-sky btn-sm ${styles.dropdownAuthBtn}`}
+                          onClick={() => {
+                            setAccountDropdownOpen(false);
+                            setIsAccountOpen(true);
+                          }}
+                        >
+                          Sign In / Register ↗
+                        </button>
+                      </div>
+
+                      <div className={styles.dropdownDivider} />
+
+                      <div className={styles.dropdownList}>
+                        <button
+                          type="button"
+                          className={styles.dropdownItem}
+                          onClick={() => {
+                            setAccountDropdownOpen(false);
+                            setIsAccountOpen(true);
+                          }}
+                        >
+                          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                            <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2" />
+                            <circle cx="12" cy="7" r="4" />
+                          </svg>
+                          <span>My Account</span>
+                        </button>
+
+                        <Link
+                          href="/shop"
+                          className={styles.dropdownItem}
+                          onClick={() => setAccountDropdownOpen(false)}
+                        >
+                          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                            <path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z" />
+                            <polyline points="3.27 6.96 12 12.01 20.73 6.96" />
+                            <line x1="12" y1="22.08" x2="12" y2="12" />
+                          </svg>
+                          <span>Orders & Tracking</span>
+                        </Link>
+
+                        <Link
+                          href="/wishlist"
+                          className={styles.dropdownItem}
+                          onClick={() => setAccountDropdownOpen(false)}
+                        >
+                          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                            <path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z" />
+                          </svg>
+                          <span>Saved Items / Wishlist</span>
+                        </Link>
+
+                        <button
+                          type="button"
+                          className={styles.dropdownItem}
+                          onClick={() => {
+                            setAccountDropdownOpen(false);
+                            setIsAccountOpen(true);
+                          }}
+                        >
+                          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                            <rect x="2" y="4" width="20" height="16" rx="2" />
+                            <line x1="2" y1="10" x2="22" y2="10" />
+                          </svg>
+                          <span>Vouchers & Offers</span>
+                        </button>
+                      </div>
+                    </>
+                  )}
+                </div>
+              )}
+            </div>
 
             {/* Compact Theme Toggle Button (Real SVG Sun / Moon, strictly no emojis) */}
             <button
@@ -221,7 +541,7 @@ export default function Navbar() {
             <button
               type="button"
               onClick={() => setIsCartOpen(true)}
-              className={styles.cartBtn}
+              className={`${styles.cartBtn} ${cartBump ? styles.cartBump : ''}`}
               aria-label={`Cart with ${itemCount} items`}
             >
               <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
@@ -229,7 +549,7 @@ export default function Navbar() {
                 <line x1="3" y1="6" x2="21" y2="6" />
                 <path d="M16 10a4 4 0 01-8 0" />
               </svg>
-              <span className={styles.cartBadge}>{itemCount}</span>
+              <span className={`${styles.cartBadge} ${cartBump ? styles.cartBadgeBump : ''}`}>{itemCount}</span>
             </button>
           </div>
         </div>
@@ -244,7 +564,8 @@ export default function Navbar() {
             />
           </div>
         )}
-      </header>
+        </header>
+      </nav>
 
       {/* 4. Full-Height Mobile Navigation Drawer (Jumia Reference) */}
       <div
@@ -361,7 +682,7 @@ export default function Navbar() {
               </li>
               <li>
                 <Link
-                  href="/shop"
+                  href="/wishlist"
                   className={styles.drawerSubItem}
                   onClick={() => setMobileMenuOpen(false)}
                 >

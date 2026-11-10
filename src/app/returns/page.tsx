@@ -15,8 +15,8 @@ export default function ReturnsPage() {
           Returns & Exchanges
         </h1>
 
-        <div style={{ padding: 'var(--space-4) var(--space-6)', backgroundColor: 'var(--sky-50)', border: '1px solid var(--sky-200)', borderRadius: 'var(--radius-xs)', marginBottom: 'var(--space-8)', fontSize: '0.85rem', color: 'var(--sky-700)' }}>
-          <strong>Draft Business Policy:</strong> Outlines customer rights and quality assurance standards. Subject to final review and approval by Deen Drip management.
+        <div style={{ padding: 'var(--space-4) var(--space-6)', backgroundColor: 'var(--bg-secondary)', border: '1px solid var(--border-light)', borderRadius: 'var(--radius-xs)', marginBottom: 'var(--space-8)', fontSize: '0.85rem', color: 'var(--text-secondary)' }}>
+          <strong>Deen Drip Quality Guarantee:</strong> Every order is backed by our 7-day exchange window for unworn items with original tags attached.
         </div>
 
         <div style={{ display: 'flex', flexDirection: 'column', gap: 'var(--space-8)', color: 'var(--text-secondary)', lineHeight: '1.7' }}>

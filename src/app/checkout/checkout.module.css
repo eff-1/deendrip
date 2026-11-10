@@ -133,14 +133,37 @@
   flex-shrink: 0;
 }
 
+.itemThumbLink {
+  display: block;
+  flex-shrink: 0;
+  text-decoration: none;
+  transition: opacity 0.2s ease, transform 0.2s ease;
+}
+
+.itemThumbLink:hover {
+  opacity: 0.85;
+  transform: scale(1.04);
+}
+
 .itemMeta {
   flex-grow: 1;
+}
+
+.itemNameLink {
+  text-decoration: none;
+  color: inherit;
+  display: inline-block;
 }
 
 .itemName {
   font-size: 0.85rem;
   font-weight: 700;
   color: var(--text-primary);
+  transition: color 0.18s ease;
+}
+
+.itemNameLink:hover .itemName {
+  color: var(--accent-primary, #38bdf8);
 }
 
 .itemSub {
@@ -217,3 +240,111 @@
     position: static;
   }
 }
+
+/* Shipping Engine Tiers & Lagos Area Chips */
+.shippingInfoCard {
+  background-color: var(--bg-secondary, #12141a);
+  border: 1px solid var(--border-light, #232936);
+  border-radius: var(--radius-xs, 4px);
+  padding: var(--space-4, 1rem);
+  margin-bottom: var(--space-6, 1.5rem);
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+}
+
+.shippingInfoTop {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+}
+
+.weightBadge {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-family: var(--font-family-mono, monospace);
+  font-size: 0.75rem;
+  font-weight: 700;
+  color: var(--accent-primary, #00ffd5);
+  background: rgba(0, 255, 213, 0.08);
+  border: 1px solid rgba(0, 255, 213, 0.2);
+  padding: 3px 8px;
+  border-radius: 4px;
+}
+
+.zoneBadge {
+  font-size: 0.75rem;
+  font-weight: 600;
+  color: var(--text-secondary, #94a3b8);
+}
+
+.lagosQuickSelector {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+  margin-top: 0.25rem;
+}
+
+.lagosQuickLabel {
+  font-size: 0.72rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: var(--text-muted, #64748b);
+}
+
+.areaChipGrid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(130px, 1fr));
+  gap: 6px;
+}
+
+.areaChip {
+  background: var(--bg-card, #161922);
+  border: 1px solid var(--border-light, #232936);
+  color: var(--text-secondary, #94a3b8);
+  padding: 6px 10px;
+  border-radius: 4px;
+  font-size: 0.74rem;
+  font-weight: 600;
+  text-align: left;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.areaChip span:last-child {
+  font-size: 0.68rem;
+  color: var(--accent-primary, #00ffd5);
+  font-weight: 700;
+}
+
+.areaChip:hover {
+  border-color: var(--accent-primary, #00ffd5);
+  color: var(--text-primary, #ffffff);
+}
+
+.areaChipActive {
+  background: rgba(0, 255, 213, 0.1);
+  border-color: var(--accent-primary, #00ffd5);
+  color: var(--text-primary, #ffffff);
+}
+
+.freeDeliveryAlert {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  background: rgba(16, 185, 129, 0.12);
+  border: 1px solid rgba(16, 185, 129, 0.3);
+  color: #34d399;
+  padding: 8px 12px;
+  border-radius: 4px;
+  font-size: 0.78rem;
+  font-weight: 600;
+}
+

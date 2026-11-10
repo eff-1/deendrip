@@ -96,7 +96,7 @@ export default function HomePage() {
           <div className={styles.categoryGrid}>
             <Link href="/shop?category=tees" className={styles.categoryCard}>
               <Image
-                src="/assets/products/Deendrip-vt-shirt-black.jpeg"
+                src="/assets/products/deendrip-vt-shirt-black.jpeg"
                 alt="Tees & Graphic Tops"
                 fill
                 sizes="(max-width: 900px) 50vw, 25vw"
@@ -126,7 +126,7 @@ export default function HomePage() {
 
             <Link href="/shop?category=trousers" className={styles.categoryCard}>
               <Image
-                src="/assets/products/Multi-colored-Jean-cargo-pants.jpeg"
+                src="/assets/products/multi-colored-jean-cargo-pants.jpeg"
                 alt="Cargo & Pants"
                 fill
                 sizes="(max-width: 900px) 50vw, 25vw"
@@ -141,7 +141,7 @@ export default function HomePage() {
 
             <Link href="/shop?category=hoodies-polos" className={styles.categoryCard}>
               <Image
-                src="/assets/products/Hoodie-jalab-brown.jpeg"
+                src="/assets/products/hoodie-jalab-brown.jpeg"
                 alt="Hoodies & Jalabs"
                 fill
                 sizes="(max-width: 900px) 50vw, 25vw"

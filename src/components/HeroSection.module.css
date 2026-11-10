@@ -1,12 +1,46 @@
 .hero {
   position: relative;
-  min-height: calc(100vh - 4.5rem - 1.8rem);
+  min-height: 100vh;
   display: flex;
   align-items: center;
   background-color: #060709;
   color: #ffffff;
   overflow: hidden;
-  padding: var(--space-8) 0;
+  padding: calc(4.5rem + 2rem) 0 var(--space-8) 0;
+}
+
+/* Dual Background Layers with smooth 1.2s crossfade */
+.heroBgLayer {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  opacity: 0;
+  transition: opacity 1.2s cubic-bezier(0.16, 1, 0.3, 1);
+  pointer-events: none;
+  z-index: 0;
+}
+
+.heroBgActive {
+  opacity: 1;
+  z-index: 1;
+}
+
+.heroBgInactive {
+  opacity: 0;
+  z-index: 0;
+}
+
+.heroBgVideo {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  object-position: center;
+  pointer-events: none;
 }
 
 .heroBgImage {
@@ -18,6 +52,21 @@
   object-fit: cover;
   object-position: center;
   opacity: 1;
+}
+
+/* Left contrast gradient backdrop for video scene text legibility */
+.videoTextContrastBackdrop {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  background: linear-gradient(
+    to right,
+    rgba(6, 7, 9, 0.88) 0%,
+    rgba(6, 7, 9, 0.72) 32%,
+    rgba(6, 7, 9, 0.35) 52%,
+    transparent 75%
+  );
+  z-index: 1;
 }
 
 /* On desktop, the 2.5K architectural background is naturally dark on left and luminous on right */
@@ -268,10 +317,89 @@
 }
 
 .modelImage {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
   object-fit: contain;
   object-position: bottom center;
   filter: drop-shadow(0 16px 36px rgba(0, 0, 0, 0.65));
   animation: modelEntrance 0.9s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+  z-index: 1;
+}
+
+/* Animated Transparent Model Video (Desktop) */
+.modelVideo,
+.modelVideoOverlay {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+  object-position: bottom center;
+  filter: drop-shadow(0 16px 36px rgba(0, 0, 0, 0.65));
+  animation: modelEntrance 0.9s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+  pointer-events: none;
+  z-index: 2;
+}
+
+/* Floating Luxury Scene Switcher Pill */
+.sceneSwitcher {
+  position: absolute;
+  bottom: 24px;
+  right: 28px;
+  z-index: 10;
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 4px 6px;
+  border-radius: 9999px;
+  background: rgba(10, 13, 20, 0.76);
+  backdrop-filter: blur(14px) saturate(180%);
+  -webkit-backdrop-filter: blur(14px) saturate(180%);
+  border: 1px solid rgba(255, 255, 255, 0.16);
+  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.55);
+}
+
+.sceneBtn {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  padding: 6px 14px;
+  border-radius: 9999px;
+  font-family: var(--font-family-mono, monospace);
+  font-size: 0.65rem;
+  font-weight: 800;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: #94a3b8;
+  background: transparent;
+  border: none;
+  cursor: pointer;
+  transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.sceneBtn:hover {
+  color: #ffffff;
+}
+
+.sceneBtnActive {
+  background: rgba(56, 189, 248, 0.16);
+  color: #38bdf8 !important;
+  box-shadow: 0 0 14px rgba(56, 189, 248, 0.3);
+}
+
+.sceneDot {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: #64748b;
+  transition: background-color 0.2s ease, box-shadow 0.2s ease;
+}
+
+.sceneBtnActive .sceneDot {
+  background: #38bdf8;
+  box-shadow: 0 0 8px #38bdf8;
 }
 
 @keyframes modelEntrance {
@@ -377,10 +505,49 @@
   }
 
   .mobileModelImage {
+    position: absolute;
+    inset: 0;
+    width: 100%;
+    height: 100%;
     object-fit: cover;
     object-position: center top;
     filter: drop-shadow(0 8px 32px rgba(0, 0, 0, 0.7));
     animation: mobileModelIn 0.8s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+    z-index: 1;
+  }
+
+  /* Animated Transparent Model Video (Mobile) */
+  .mobileModelVideo,
+  .mobileModelVideoOverlay {
+    position: absolute;
+    inset: 0;
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    object-position: center top;
+    filter: drop-shadow(0 8px 32px rgba(0, 0, 0, 0.7));
+    animation: mobileModelIn 0.8s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+    pointer-events: none;
+    z-index: 2;
+  }
+
+  .sceneSwitcher {
+    position: absolute;
+    top: calc(4.5rem + 12px);
+    right: 14px;
+    bottom: auto;
+    z-index: 10;
+    display: inline-flex;
+    padding: 3px 6px;
+    gap: 4px;
+    background: rgba(10, 13, 20, 0.85);
+    border: 1px solid rgba(255, 255, 255, 0.18);
+  }
+
+  .sceneBtn {
+    padding: 4px 8px;
+    font-size: 0.58rem;
+    gap: 4px;
   }
 
   @keyframes mobileModelIn {
@@ -431,7 +598,7 @@
   .heroContent {
     position: absolute;
     inset: 0;
-    padding: 20px 20px 28px 20px;
+    padding: calc(4.2rem + 14px) 20px 24px 20px;
     display: flex;
     flex-direction: column;
     justify-content: space-between;

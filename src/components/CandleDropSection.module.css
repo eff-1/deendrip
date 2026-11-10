@@ -143,7 +143,6 @@
   height: 6px;
   border-radius: 50%;
   background: var(--candle-tag-color);
-  box-shadow: 0 0 8px var(--candle-tag-color);
   animation: pulse 2s infinite ease-in-out;
 }
 
@@ -487,11 +486,10 @@
   padding: 6px;
 }
 
-/* Card 4: Foam trucker cap - high-fashion closeup on the cap & embroidery */
+/* Card 4: Foam trucker cap - full composite trio shot */
 .column:nth-child(4) .productImage {
-  object-fit: cover;
-  object-position: center 22%;
-  padding: 0;
+  object-fit: contain;
+  padding: 4px;
 }
 
 .primaryImage {
@@ -502,13 +500,36 @@
   opacity: 0;
 }
 
-/* Flip state or alternate image on hover */
-.column:hover .alternateImage {
+/* Front / Back image view states */
+.showBack .primaryImage {
+  opacity: 0;
+}
+.showBack .alternateImage {
   opacity: 1;
 }
 
-.column:hover .primaryImage {
+.showFront .primaryImage {
+  opacity: 1;
+}
+.showFront .alternateImage {
   opacity: 0;
+}
+
+.imageLink {
+  position: relative;
+  display: block;
+  width: 100%;
+  height: 100%;
+}
+
+.productTitleLink {
+  text-decoration: none;
+  color: inherit;
+  display: block;
+}
+
+.productTitleLink:hover .productTitle {
+  color: var(--candle-tag-color);
 }
 
 /* Badges inside card image */
@@ -572,7 +593,8 @@
   transition: all 0.2s ease;
 }
 
-.flipButton:hover {
+.flipButton:hover,
+.flipActive {
   background: var(--candle-tag-color);
   color: #06080d;
   border-color: var(--candle-tag-color);
@@ -647,18 +669,17 @@
 ══════════════════════════════════════════════════════════════════════ */
 .column:hover .candleCard {
   border-color: var(--candle-wick-glow);
-  box-shadow: 0 0 25px rgba(56, 189, 248, 0.2), 0 15px 35px -5px rgba(0, 0, 0, 0.4);
+  box-shadow: 0 15px 35px -5px rgba(0, 0, 0, 0.5);
   transform: translateY(-4px);
 }
 
 :global([data-theme="light"]) .column:hover .candleCard {
-  box-shadow: 0 0 25px rgba(2, 132, 199, 0.2), 0 15px 35px -5px rgba(0, 0, 0, 0.12);
+  box-shadow: 0 15px 35px -5px rgba(0, 0, 0, 0.12);
 }
 
 .column:hover .wickTop,
 .column:hover .wickBottom {
   border-color: var(--candle-wick-glow);
-  filter: drop-shadow(0 0 5px var(--candle-wick-glow));
 }
 
 .column:hover .wickTipTop,

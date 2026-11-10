@@ -41,8 +41,8 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: 'Your cart is empty' }, { status: 400 });
     }
 
-    // Authoritative server calculation & stock check
-    const calculation = validateAndCalculateOrder(items, deliveryState);
+    // Authoritative server calculation & stock check using exact rate cards
+    const calculation = validateAndCalculateOrder(items, deliveryState, deliveryCity, deliveryAddress);
 
     // Generate unique order reference
     const orderReference = generateOrderReference();

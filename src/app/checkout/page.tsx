@@ -6,26 +6,14 @@ import Image from 'next/image';
 import { useRouter } from 'next/navigation';
 import { useCart } from '@/context/CartContext';
 import { formatNaira } from '@/lib/formatters';
+import {
+  calculateOrderShipping,
+  calculateCartTotalWeightKg,
+  ALL_NIGERIAN_STATES,
+  LAGOS_AREA_ZONES,
+} from '@/lib/shipping';
+import AddressAutocompleteInput from '@/components/AddressAutocompleteInput';
 import styles from './checkout.module.css';
-
-const NIGERIAN_STATES = [
-  'Lagos',
-  'Abuja (FCT)',
-  'Rivers',
-  'Oyo',
-  'Ogun',
-  'Kano',
-  'Kaduna',
-  'Edo',
-  'Delta',
-  'Kwara',
-  'Anambra',
-  'Enugu',
-  'Ondo',
-  'Osun',
-  'Plateau',
-  'Other States',
-];
 
 export default function CheckoutPage() {
   const router = useRouter();
@@ -41,13 +29,21 @@ export default function CheckoutPage() {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
 
-  // Dynamic delivery fee calculation
-  const isLagos = deliveryState.toLowerCase() === 'lagos';
-  const deliveryFeeKobo = isLagos
-    ? (subtotalKobo >= 8000000 ? 0 : 350000)
-    : 650000;
+  // Dynamic weight calculation from items in cart
+  const totalWeightKg = calculateCartTotalWeightKg(items);
 
+  // Authoritative real-time shipping calculation using exact Abuja, Benin & Lagos rate cards
+  const shippingResult = calculateOrderShipping({
+    state: deliveryState,
+    city: deliveryCity,
+    address: deliveryAddress,
+    subtotalKobo,
+    totalWeightKg,
+  });
+
+  const deliveryFeeKobo = shippingResult.deliveryFeeKobo;
   const totalKobo = subtotalKobo + deliveryFeeKobo;
+  const isLagos = deliveryState.toLowerCase().includes('lagos');
 
   if (items.length === 0) {
     return (
@@ -187,14 +183,23 @@ export default function CheckoutPage() {
             <div className={styles.formGrid}>
               <div className={styles.formGroupFull}>
                 <label className={styles.label} htmlFor="address">Street Address *</label>
-                <input
+                <AddressAutocompleteInput
                   id="address"
-                  type="text"
-                  required
-                  placeholder="House number, Street name, Estate / Landmark"
                   value={deliveryAddress}
-                  onChange={e => setDeliveryAddress(e.target.value)}
+                  onChange={val => setDeliveryAddress(val)}
+                  onPlaceSelected={({ address, city, state }) => {
+                    setDeliveryAddress(address);
+                    if (city) setDeliveryCity(city);
+                    if (state) {
+                      const matched = ALL_NIGERIAN_STATES.find(s =>
+                        s.toLowerCase().includes(state.toLowerCase()) || state.toLowerCase().includes(s.toLowerCase())
+                      );
+                      if (matched) setDeliveryState(matched);
+                    }
+                  }}
                   className={styles.input}
+                  placeholder="House number, Street name, Estate / Landmark"
+                  required
                 />
               </div>
 
@@ -204,7 +209,7 @@ export default function CheckoutPage() {
                   id="city"
                   type="text"
                   required
-                  placeholder="e.g. Lekki Phase 1, Ikeja, Surulere"
+                  placeholder={isLagos ? 'e.g. Lekki Phase 1, Ikeja, Surulere' : 'e.g. Benin City, Warri, Ilorin, Garki'}
                   value={deliveryCity}
                   onChange={e => setDeliveryCity(e.target.value)}
                   className={styles.input}
@@ -212,35 +217,76 @@ export default function CheckoutPage() {
               </div>
 
               <div className={styles.formGroup}>
-                <label className={styles.label} htmlFor="state">State *</label>
+                <label className={styles.label} htmlFor="state">State / Region *</label>
                 <select
                   id="state"
                   value={deliveryState}
                   onChange={e => setDeliveryState(e.target.value)}
                   className={styles.select}
                 >
-                  {NIGERIAN_STATES.map(st => (
+                  {ALL_NIGERIAN_STATES.map(st => (
                     <option key={st} value={st}>
                       {st}
                     </option>
                   ))}
                 </select>
               </div>
+
+              {/* Lagos Quick Area Chips for "any place inserted" */}
+              {isLagos && (
+                <div className={styles.formGroupFull}>
+                  <div className={styles.lagosQuickSelector}>
+                    <span className={styles.lagosQuickLabel}>Quick Select Lagos Hub Area (or type any location above):</span>
+                    <div className={styles.areaChipGrid}>
+                      {LAGOS_AREA_ZONES.map(z => (
+                        <button
+                          key={z.name}
+                          type="button"
+                          onClick={() => setDeliveryCity(z.keywords[0])}
+                          className={`${styles.areaChip} ${deliveryCity.toLowerCase().includes(z.keywords[0]) ? styles.areaChipActive : ''}`}
+                        >
+                          <span>{z.name}</span>
+                          <span>{formatNaira(z.amountNaira * 100)}</span>
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+                </div>
+              )}
             </div>
 
-            <div className={styles.deliveryNotice}>
-              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                <rect x="1" y="3" width="15" height="13" />
-                <polygon points="16 8 20 8 23 11 23 16 16 16 16 8" />
-                <circle cx="5.5" cy="18.5" r="2.5" />
-                <circle cx="18.5" cy="18.5" r="2.5" />
-              </svg>
-              <div>
-                <strong>
-                  {isLagos ? 'Lagos Standard Delivery' : 'Nationwide Doorstep Dispatch'}
-                </strong>
-                : {deliveryFeeKobo === 0 ? 'FREE (Orders over ₦80k)' : formatNaira(deliveryFeeKobo)}
+            {/* Live Logistics Rate Breakdown */}
+            <div className={styles.shippingInfoCard}>
+              <div className={styles.shippingInfoTop}>
+                <span className={styles.weightBadge}>
+                  📦 Package Weight: {totalWeightKg} KG · ({shippingResult.weightBracketLabel})
+                </span>
+                <span className={styles.zoneBadge}>
+                  {shippingResult.zoneLabel}
+                </span>
               </div>
+
+              {shippingResult.isFreeDelivery ? (
+                <div className={styles.freeDeliveryAlert}>
+                  <span>🎉</span>
+                  <span>FREE Delivery activated on this order! (Lagos orders over ₦85,000)</span>
+                </div>
+              ) : (
+                <div className={styles.deliveryNotice} style={{ margin: 0 }}>
+                  <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                    <rect x="1" y="3" width="15" height="13" />
+                    <polygon points="16 8 20 8 23 11 23 16 16 16 16 8" />
+                    <circle cx="5.5" cy="18.5" r="2.5" />
+                    <circle cx="18.5" cy="18.5" r="2.5" />
+                  </svg>
+                  <div>
+                    <strong>{shippingResult.zoneLabel}</strong>: {formatNaira(deliveryFeeKobo)}
+                    <div style={{ fontSize: '0.72rem', color: 'var(--text-muted)', marginTop: '2px' }}>
+                      {shippingResult.notes}
+                    </div>
+                  </div>
+                </div>
+              )}
             </div>
 
             <button
@@ -269,17 +315,28 @@ export default function CheckoutPage() {
             <div className={styles.itemsList}>
               {items.map(item => (
                 <div key={item.variantId} className={styles.itemRow}>
-                  <div className={styles.itemThumb}>
-                    <Image
-                      src={item.imageUrl}
-                      alt={item.name}
-                      fill
-                      sizes="56px"
-                      style={{ objectFit: 'cover' }}
-                    />
-                  </div>
+                  <Link
+                    href={`/products/${item.slug || item.productId}`}
+                    className={styles.itemThumbLink}
+                    aria-label={`View ${item.name}`}
+                  >
+                    <div className={styles.itemThumb}>
+                      <Image
+                        src={item.imageUrl}
+                        alt={item.name}
+                        fill
+                        sizes="56px"
+                        style={{ objectFit: 'cover' }}
+                      />
+                    </div>
+                  </Link>
                   <div className={styles.itemMeta}>
-                    <div className={styles.itemName}>{item.name}</div>
+                    <Link
+                      href={`/products/${item.slug || item.productId}`}
+                      className={styles.itemNameLink}
+                    >
+                      <div className={styles.itemName}>{item.name}</div>
+                    </Link>
                     <div className={styles.itemSub}>Size: {item.size} • Qty: {item.quantity}</div>
                   </div>
                   <div className={styles.itemPrice}>{formatNaira(item.priceKobo * item.quantity)}</div>

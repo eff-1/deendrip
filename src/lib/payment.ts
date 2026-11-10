@@ -36,7 +36,9 @@ export interface CalculatedOrder {
  */
 export function validateAndCalculateOrder(
   items: Array<{ variantId: string; quantity: number }>,
-  deliveryState: string
+  deliveryState: string,
+  deliveryCity: string = '',
+  deliveryAddress: string = ''
 ): CalculatedOrder {
   const db = getDb();
 
@@ -46,6 +48,7 @@ export function validateAndCalculateOrder(
 
   let subtotalKobo = 0;
   const verifiedItems: CalculatedOrder['verifiedItems'] = [];
+  const itemsForWeight: Array<{ category?: string; name?: string; quantity: number }> = [];
 
   for (const item of items) {
     if (!Number.isInteger(item.quantity) || item.quantity <= 0) {
@@ -61,6 +64,7 @@ export function validateAndCalculateOrder(
         v.stock_quantity,
         v.price_override_kobo,
         p.name as product_name,
+        p.category,
         p.price_kobo as product_price_kobo,
         p.sale_price_kobo,
         p.is_published
@@ -75,6 +79,7 @@ export function validateAndCalculateOrder(
       stock_quantity: number;
       price_override_kobo: number | null;
       product_name: string;
+      category: string;
       product_price_kobo: number;
       sale_price_kobo: number | null;
       is_published: number;
@@ -109,10 +114,24 @@ export function validateAndCalculateOrder(
       quantity: item.quantity,
       subtotalKobo: itemSubtotalKobo,
     });
+
+    itemsForWeight.push({
+      category: row.category,
+      name: row.product_name,
+      quantity: item.quantity,
+    });
   }
 
-  // Use DB-backed delivery zone configuration (not hardcoded values)
-  const deliveryFeeKobo = calculateDeliveryFee(deliveryState, subtotalKobo);
+  // Calculate delivery fee using exact rate cards (Abuja, Benin, Lagos tiers)
+  let totalWeightKg = 1.0;
+  try {
+    const { calculateCartTotalWeightKg } = require('./shipping');
+    totalWeightKg = calculateCartTotalWeightKg(itemsForWeight);
+  } catch {
+    totalWeightKg = 1.0;
+  }
+
+  const deliveryFeeKobo = calculateDeliveryFee(deliveryState, subtotalKobo, deliveryCity, deliveryAddress, totalWeightKg);
   const totalKobo = subtotalKobo + deliveryFeeKobo;
 
   return {

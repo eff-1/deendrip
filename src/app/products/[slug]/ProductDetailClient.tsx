@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, useRef } from 'react';
+import React, { useState, useRef, useEffect } from 'react';
 import Link from 'next/link';
 import Image from 'next/image';
 import type { Product } from '@/lib/types';
@@ -121,6 +121,7 @@ export default function ProductDetailClient({ product, similarProducts = [] }: P
     addItem({
       productId: product.id,
       variantId: selectedVariant.id,
+      slug: product.slug,
       name: product.name,
       size: selectedVariant.size,
       color: selectedVariant.color,
@@ -136,6 +137,33 @@ export default function ProductDetailClient({ product, similarProducts = [] }: P
 
   const toggleAccordion = (section: string) => {
     setOpenAccordion(openAccordion === section ? null : section);
+  };
+
+  // Wishlist state & toggle
+  const [isWishlisted, setIsWishlisted] = useState(false);
+
+  useEffect(() => {
+    try {
+      const wishlist: string[] = JSON.parse(localStorage.getItem('deendrip_wishlist') || '[]');
+      setIsWishlisted(wishlist.includes(product.id));
+    } catch {}
+  }, [product.id]);
+
+  const toggleWishlist = (e: React.MouseEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    try {
+      const wishlist: string[] = JSON.parse(localStorage.getItem('deendrip_wishlist') || '[]');
+      let updated: string[];
+      if (wishlist.includes(product.id)) {
+        updated = wishlist.filter(id => id !== product.id);
+      } else {
+        updated = [...wishlist, product.id];
+      }
+      localStorage.setItem('deendrip_wishlist', JSON.stringify(updated));
+      setIsWishlisted(!isWishlisted);
+      window.dispatchEvent(new Event('storage'));
+    } catch {}
   };
 
   return (
@@ -457,6 +485,18 @@ export default function ProductDetailClient({ product, similarProducts = [] }: P
               ) : (
                 'Add to Bag'
               )}
+            </button>
+
+            <button
+              type="button"
+              onClick={toggleWishlist}
+              className={`${styles.wishlistBtn} ${isWishlisted ? styles.wishlistActive : ''}`}
+              aria-label={isWishlisted ? 'Remove from wishlist' : 'Save to wishlist'}
+              title={isWishlisted ? 'Saved in wishlist' : 'Save to wishlist'}
+            >
+              <svg width="20" height="20" viewBox="0 0 24 24" fill={isWishlisted ? 'currentColor' : 'none'} stroke="currentColor" strokeWidth="2.2">
+                <path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z" />
+              </svg>
             </button>
           </div>
 

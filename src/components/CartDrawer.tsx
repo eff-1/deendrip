@@ -100,18 +100,31 @@ export default function CartDrawer() {
             <div className={styles.itemsList}>
               {items.map(item => (
                 <div key={item.variantId} className={styles.itemRow}>
-                  <div className={styles.itemImage}>
-                    <Image
-                      src={item.imageUrl}
-                      alt={item.name}
-                      fill
-                      sizes="72px"
-                      style={{ objectFit: 'cover' }}
-                    />
-                  </div>
+                  <Link
+                    href={`/products/${item.slug || item.productId}`}
+                    className={styles.itemImageLink}
+                    onClick={() => setIsCartOpen(false)}
+                    aria-label={`View ${item.name}`}
+                  >
+                    <div className={styles.itemImage}>
+                      <Image
+                        src={item.imageUrl}
+                        alt={item.name}
+                        fill
+                        sizes="72px"
+                        style={{ objectFit: 'cover' }}
+                      />
+                    </div>
+                  </Link>
 
                   <div className={styles.itemInfo}>
-                    <h4 className={styles.itemName}>{item.name}</h4>
+                    <Link
+                      href={`/products/${item.slug || item.productId}`}
+                      className={styles.itemNameLink}
+                      onClick={() => setIsCartOpen(false)}
+                    >
+                      <h4 className={styles.itemName}>{item.name}</h4>
+                    </Link>
                     <div className={styles.itemVariant}>Size: {item.size}</div>
                     <div className={styles.itemPrice}>{formatNaira(item.priceKobo)}</div>
 

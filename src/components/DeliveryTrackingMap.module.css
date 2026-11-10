@@ -1,0 +1,245 @@
+.trackingContainer {
+  margin-top: var(--space-8, 2rem);
+  padding: var(--space-6, 1.5rem);
+  background-color: var(--bg-secondary, #12141a);
+  border: 1px solid var(--border-light, #232936);
+  border-radius: var(--radius-sm, 6px);
+}
+
+.headerRow {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  flex-wrap: wrap;
+  gap: 1rem;
+  margin-bottom: var(--space-6, 1.5rem);
+}
+
+.badge {
+  display: inline-block;
+  font-size: 0.7rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  color: var(--accent-primary, #00ffd5);
+  background: rgba(0, 255, 213, 0.1);
+  padding: 4px 10px;
+  border-radius: 999px;
+  border: 1px solid rgba(0, 255, 213, 0.2);
+  margin-bottom: 0.5rem;
+}
+
+.heading {
+  font-size: 1.25rem;
+  font-weight: 800;
+  text-transform: uppercase;
+  letter-spacing: 0.02em;
+  color: var(--text-primary, #ffffff);
+  margin: 0 0 0.35rem 0;
+}
+
+.subtext {
+  font-size: 0.85rem;
+  color: var(--text-secondary, #94a3b8);
+  margin: 0;
+}
+
+.dispatchChatBtn {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 8px 16px;
+  font-size: 0.8rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  color: #0b0d11;
+  background-color: var(--accent-primary, #00ffd5);
+  border-radius: 4px;
+  text-decoration: none;
+  transition: opacity 0.2s ease, transform 0.2s ease;
+}
+
+.dispatchChatBtn:hover {
+  opacity: 0.9;
+  transform: translateY(-1px);
+}
+
+/* 4-Step Timeline */
+.timeline {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: var(--space-6, 1.5rem);
+  padding: var(--space-4, 1rem) 0;
+  overflow-x: auto;
+}
+
+.timelineStep {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  text-align: center;
+  gap: 6px;
+  flex: 0 0 110px;
+}
+
+.stepCircle {
+  width: 28px;
+  height: 28px;
+  border-radius: 50%;
+  background-color: #1e2430;
+  color: #64748b;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 0.75rem;
+  font-weight: 800;
+  border: 2px solid #2d3748;
+  transition: all 0.25s ease;
+}
+
+.stepLabel {
+  font-size: 0.72rem;
+  font-weight: 600;
+  color: #64748b;
+  text-transform: uppercase;
+  letter-spacing: 0.02em;
+}
+
+.stepDone .stepCircle {
+  background-color: var(--accent-primary, #00ffd5);
+  color: #0b0d11;
+  border-color: var(--accent-primary, #00ffd5);
+  box-shadow: 0 0 12px rgba(0, 255, 213, 0.4);
+}
+
+.stepDone .stepLabel {
+  color: var(--text-primary, #ffffff);
+}
+
+.timelineConnector {
+  flex: 1;
+  height: 2px;
+  background-color: #2d3748;
+  margin: 0 8px;
+  margin-bottom: 22px;
+}
+
+/* Map Card */
+.mapCard {
+  border-radius: var(--radius-xs, 4px);
+  overflow: hidden;
+  border: 1px solid var(--border-light, #232936);
+  background-color: #0d1017;
+}
+
+.googleMapFrame {
+  width: 100%;
+  height: 260px;
+}
+
+.editorialRouteVisual {
+  padding: 1.5rem;
+  display: flex;
+  flex-direction: column;
+  gap: 1.25rem;
+}
+
+.routeHeader {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 0.75rem;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: var(--accent-primary, #00ffd5);
+  font-weight: 700;
+}
+
+.pulseDot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background-color: var(--accent-primary, #00ffd5);
+  box-shadow: 0 0 8px var(--accent-primary, #00ffd5);
+  animation: pulse 2s infinite;
+}
+
+@keyframes pulse {
+  0% { transform: scale(0.95); opacity: 0.7; }
+  50% { transform: scale(1.3); opacity: 1; }
+  100% { transform: scale(0.95); opacity: 0.7; }
+}
+
+.routeNodes {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+  padding: 1rem 0;
+  border-top: 1px solid #1a1f2c;
+  border-bottom: 1px solid #1a1f2c;
+}
+
+.routeNode {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  max-width: 220px;
+}
+
+.nodeIcon {
+  font-size: 1.5rem;
+}
+
+.nodeMeta {
+  display: flex;
+  flex-direction: column;
+  font-size: 0.8rem;
+  line-height: 1.3;
+}
+
+.nodeMeta strong {
+  color: var(--text-primary, #ffffff);
+}
+
+.nodeMeta span {
+  color: var(--text-muted, #64748b);
+  font-size: 0.72rem;
+}
+
+.transitTrack {
+  flex: 1;
+  position: relative;
+  display: flex;
+  align-items: center;
+}
+
+.transitBar {
+  width: 100%;
+  height: 3px;
+  background: linear-gradient(90deg, #1e2430 0%, var(--accent-primary, #00ffd5) 50%, #1e2430 100%);
+  border-radius: 2px;
+}
+
+.transitRider {
+  position: absolute;
+  left: 50%;
+  transform: translateX(-50%);
+  font-size: 1.25rem;
+  animation: bounce 2s infinite ease-in-out;
+}
+
+@keyframes bounce {
+  0%, 100% { transform: translate(-50%, 0); }
+  50% { transform: translate(-50%, -4px); }
+}
+
+.routeFooter {
+  display: flex;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+  font-size: 0.75rem;
+  color: var(--text-secondary, #94a3b8);
+}
