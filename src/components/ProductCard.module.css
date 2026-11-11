@@ -544,17 +544,98 @@
   color: #ef4444;
 }
 
-/* Mobile — slightly more compact */
+/* Mobile — Compact price & button dimensions so ADD button & +/- stepper never get cut in half */
 @media (max-width: 640px) {
   .details {
-    padding: 10px 11px 12px 11px;
+    padding: 8px 9px 10px 9px !important;
   }
 
   .title {
-    font-size: 0.8rem;
+    font-size: 0.8rem !important;
+    line-height: 1.25 !important;
+  }
+
+  .bottomRow {
+    display: flex !important;
+    align-items: center !important;
+    justify-content: space-between !important;
+    gap: 4px !important;
+    margin-top: 6px !important;
+    padding-top: 6px !important;
+    min-width: 0 !important;
   }
 
   .price {
-    font-size: 0.92rem;
+    font-size: 0.82rem !important; /* Reduced price font size as requested */
+    font-weight: 800 !important;
+    letter-spacing: -0.03em !important;
+    white-space: nowrap !important;
+    flex-shrink: 0 !important;
+  }
+
+  /* Compact ADD button */
+  .shopNowAction {
+    padding: 4px 8px !important; /* Reduced button padding */
+    font-size: 0.62rem !important;
+    letter-spacing: 0.04em !important;
+    gap: 3px !important;
+    flex-shrink: 0 !important;
+  }
+
+  .shopNowAction svg {
+    width: 10px !important;
+    height: 10px !important;
+  }
+
+  /* Compact +/- Stepper */
+  .qtyStepper {
+    padding: 2px 4px !important; /* Reduced stepper so space is always enough */
+    gap: 2px !important;
+    flex-shrink: 0 !important;
+  }
+
+  .stepperMinus,
+  .stepperPlus {
+    width: 18px !important;
+    height: 18px !important;
+  }
+
+  .stepperMinus svg,
+  .stepperPlus svg {
+    width: 8px !important;
+    height: 8px !important;
+  }
+
+  .stepperCount {
+    font-size: 0.68rem !important;
+    min-width: 14px !important;
+    padding: 0 1px !important;
+  }
+}
+
+/* Extra small screens (e.g. 360px Samsung Galaxy A/S-series) */
+@media (max-width: 380px) {
+  .details {
+    padding: 7px 7px 9px 7px !important;
+  }
+
+  .price {
+    font-size: 0.76rem !important;
+  }
+
+  .shopNowAction {
+    padding: 3px 6px !important;
+    font-size: 0.58rem !important;
+  }
+
+  .stepperMinus,
+  .stepperPlus {
+    width: 16px !important;
+    height: 16px !important;
+  }
+
+  .stepperCount {
+    font-size: 0.64rem !important;
+    min-width: 12px !important;
   }
 }

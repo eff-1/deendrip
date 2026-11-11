@@ -6,7 +6,7 @@
   background-color: #060709;
   color: #ffffff;
   overflow: hidden;
-  padding: calc(4.5rem + 2rem) 0 var(--space-8) 0;
+  padding: calc(4.5rem + 1rem) 0 0 0;
 }
 
 /* Dual Background Layers with smooth 1.2s crossfade */
@@ -281,27 +281,30 @@
 .modelShowcaseDesktop {
   position: relative;
   width: 100%;
-  max-width: 540px;
+  max-width: 660px;
   margin-left: auto;
   display: flex;
   flex-direction: column;
   align-items: center;
   justify-content: flex-end;
+  align-self: flex-end;
+  margin-bottom: 0;
+  transform: translateX(-40px);
 }
 
 .groundShadow {
   position: absolute;
   bottom: 0;
-  left: 12%;
-  right: 12%;
-  height: 38px;
+  left: 4%;
+  right: 4%;
+  height: 44px;
   background: radial-gradient(
     ellipse at 50% 60%,
-    rgba(0, 0, 0, 0.75) 0%,
-    rgba(0, 0, 0, 0.35) 50%,
+    rgba(0, 0, 0, 0.8) 0%,
+    rgba(0, 0, 0, 0.4) 50%,
     transparent 75%
   );
-  filter: blur(12px);
+  filter: blur(14px);
   z-index: 1;
   pointer-events: none;
 }
@@ -309,11 +312,15 @@
 .modelContainer {
   position: relative;
   width: 100%;
-  height: clamp(520px, 72vh, 720px);
+  height: clamp(620px, 86vh, 860px);
   z-index: 2;
   display: flex;
   align-items: flex-end;
   justify-content: center;
+  margin-bottom: 0;
+  margin-top: 0.5rem;
+  mask-image: linear-gradient(to right, black 82%, rgba(0, 0, 0, 0.6) 92%, transparent 100%);
+  -webkit-mask-image: linear-gradient(to right, black 82%, rgba(0, 0, 0, 0.6) 92%, transparent 100%);
 }
 
 .modelImage {
@@ -492,11 +499,11 @@
     pointer-events: none;
   }
 
-  /* Models fill the full hero height — centered, no feet visible (too tall), just like reference */
+  /* Models positioned below fixed top bar so heads are never cut off */
   .mobileModelLayer {
     display: block;
     position: absolute;
-    top: 0;
+    top: calc(3.75rem + 16px);
     left: 0;
     right: 0;
     bottom: 0;
@@ -512,7 +519,7 @@
     object-fit: cover;
     object-position: center top;
     filter: drop-shadow(0 8px 32px rgba(0, 0, 0, 0.7));
-    animation: mobileModelIn 0.8s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+    animation: mobileModelIn 0.9s cubic-bezier(0.16, 1, 0.3, 1) forwards;
     z-index: 1;
   }
 
@@ -526,34 +533,20 @@
     object-fit: cover;
     object-position: center top;
     filter: drop-shadow(0 8px 32px rgba(0, 0, 0, 0.7));
-    animation: mobileModelIn 0.8s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+    animation: mobileModelIn 0.9s cubic-bezier(0.16, 1, 0.3, 1) forwards;
     pointer-events: none;
     z-index: 2;
   }
 
+  /* Hide scene switcher buttons completely on mobile as requested */
   .sceneSwitcher {
-    position: absolute;
-    top: calc(4.5rem + 12px);
-    right: 14px;
-    bottom: auto;
-    z-index: 10;
-    display: inline-flex;
-    padding: 3px 6px;
-    gap: 4px;
-    background: rgba(10, 13, 20, 0.85);
-    border: 1px solid rgba(255, 255, 255, 0.18);
-  }
-
-  .sceneBtn {
-    padding: 4px 8px;
-    font-size: 0.58rem;
-    gap: 4px;
+    display: none !important;
   }
 
   @keyframes mobileModelIn {
     from {
       opacity: 0;
-      transform: translateY(14px) scale(0.97);
+      transform: translateY(12px) scale(0.96);
     }
     to {
       opacity: 1;
@@ -618,14 +611,14 @@
     height: 100%;
   }
 
-  /* ── Upper Header Block: Badge + Headline + Subtitle ── */
+  /* ── Upper Header Block: Badge + Headline + Subtitle (moved down toward middle) ── */
   .mobileHeaderBlock {
     display: flex;
     flex-direction: column;
     align-items: center;
     width: 100%;
     max-width: 360px;
-    margin-top: 8px;
+    margin-top: clamp(2.5rem, 8vh, 4.5rem);
   }
 
   /* ── AW26 DROP Cyan Capsule Badge ── */
@@ -662,18 +655,24 @@
     text-shadow: 0 4px 32px rgba(0, 0, 0, 0.95);
   }
 
-  /* ── Italic Refined Subtitle ── */
+  /* ── Italic Refined Subtitle with Glassmorphic Legibility Capsule ── */
   .heroSubtitleMobileRef {
     font-family: var(--font-family-sans);
     font-style: italic;
     font-size: 0.8125rem;
     font-weight: 500;
     line-height: 1.48;
-    color: #a1a1aa;
-    max-width: 270px;
+    color: #f1f5f9;
+    max-width: 290px;
     margin: 12px auto 0 auto;
     text-align: center;
-    text-shadow: 0 2px 12px rgba(0, 0, 0, 0.85);
+    background: rgba(8, 10, 16, 0.72);
+    backdrop-filter: blur(12px);
+    -webkit-backdrop-filter: blur(12px);
+    border: 1px solid rgba(255, 255, 255, 0.18);
+    padding: 6px 16px;
+    border-radius: 9999px;
+    box-shadow: 0 8px 24px rgba(0, 0, 0, 0.5);
   }
 
   /* ── Bottom Action Group ── */

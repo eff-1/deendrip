@@ -34,8 +34,8 @@ const SCENES: SceneConfig[] = [
     bgSrc: '/assets/campaign/hero-brutalist-concrete-bg.jpg',
     bgAlt: 'Deen Drip Brutalist Concrete Architectural Space',
     hasRightColumnModel: true,
-    modelSrc: '/assets/campaign/hero-models-duo-clean.png',
-    modelAlt: 'Deen Drip Streetwear Models Duo',
+    modelSrc: '/assets/campaign/hero-model-tracksuit-clean.png',
+    modelAlt: 'Deen Drip AW26 Black & Silver Heavyweight Tracksuit Model',
   },
   {
     id: 2,
@@ -52,11 +52,11 @@ const SCENES: SceneConfig[] = [
 export default function HeroSection() {
   const [activeBgIndex, setActiveBgIndex] = useState(0); // 0 = Initial Arch Atrium, 1 = Brutalist Concrete, 2 = Arch Film Video
 
-  // 10 minutes interval rotation across all 3 backgrounds as requested
+  // 2 minutes interval rotation across all 3 backgrounds with smooth auto-cycle
   useEffect(() => {
     const interval = setInterval(() => {
       setActiveBgIndex(prev => (prev + 1) % SCENES.length);
-    }, 10 * 60 * 1000); // 10 minutes (600,000ms)
+    }, 2 * 60 * 1000); // 2 minutes (120,000ms)
     return () => clearInterval(interval);
   }, []);
 
@@ -126,6 +126,17 @@ export default function HeroSection() {
           />
         </div>
       )}
+
+      {/* Preload secondary model asset so transition is instantaneous */}
+      <div style={{ display: 'none' }} aria-hidden="true">
+        <Image
+          src="/assets/campaign/hero-model-tracksuit-clean.png"
+          alt=""
+          width={10}
+          height={10}
+          priority
+        />
+      </div>
 
       {/* 3. LAYER 3: Dark contrast vignette overlay for mobile readability */}
       <div className={styles.heroVignette} />

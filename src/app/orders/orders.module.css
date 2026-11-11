@@ -1,0 +1,364 @@
+.container {
+  padding: 3rem 0 5rem;
+  min-height: 85vh;
+}
+
+.inner {
+  max-width: 860px;
+  margin: 0 auto;
+}
+
+.header {
+  text-align: center;
+  margin-bottom: 2.5rem;
+}
+
+.title {
+  font-size: clamp(2rem, 4vw, 2.75rem);
+  font-weight: 900;
+  text-transform: uppercase;
+  letter-spacing: -0.03em;
+  color: var(--text-primary);
+  margin: 0.5rem 0 0.85rem;
+}
+
+.subtitle {
+  font-size: 0.95rem;
+  color: var(--text-secondary);
+  max-width: 580px;
+  margin: 0 auto;
+  line-height: 1.6;
+}
+
+/* ── Lookup Form ── */
+.lookupCard {
+  background: var(--bg-card);
+  border: 1px solid var(--border-light);
+  border-radius: var(--radius-sm);
+  padding: 1.75rem 2rem;
+  margin-bottom: 2.5rem;
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.06);
+}
+
+.lookupForm {
+  display: flex;
+  gap: 0.75rem;
+  align-items: center;
+}
+
+.lookupInput {
+  flex: 1;
+  padding: 0.85rem 1.15rem;
+  font-size: 0.92rem;
+  background-color: var(--bg-secondary);
+  border: 1px solid var(--border-light);
+  border-radius: var(--radius-xs);
+  color: var(--text-primary);
+  outline: none;
+  transition: all var(--transition-fast);
+}
+
+.lookupInput:focus {
+  border-color: var(--accent-primary);
+  background-color: var(--bg-card);
+  box-shadow: 0 0 0 3px rgba(56, 189, 248, 0.15);
+}
+
+.lookupHint {
+  font-size: 0.76rem;
+  color: var(--text-muted);
+  margin-top: 0.65rem;
+}
+
+/* ── Orders List ── */
+.ordersList {
+  display: flex;
+  flex-direction: column;
+  gap: 2rem;
+}
+
+.orderCard {
+  background: var(--bg-card);
+  border: 1px solid var(--border-light);
+  border-radius: var(--radius-sm);
+  overflow: hidden;
+  box-shadow: 0 4px 24px rgba(0, 0, 0, 0.08);
+}
+
+.orderHeader {
+  padding: 1.25rem 1.75rem;
+  background-color: var(--bg-secondary);
+  border-bottom: 1px solid var(--border-light);
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 0.75rem;
+}
+
+.orderRefGroup {
+  display: flex;
+  align-items: center;
+  gap: 0.85rem;
+}
+
+.orderRef {
+  font-family: var(--font-mono, monospace);
+  font-size: 1.1rem;
+  font-weight: 900;
+  color: var(--text-primary);
+  letter-spacing: 0.04em;
+}
+
+.orderDate {
+  font-size: 0.78rem;
+  color: var(--text-muted);
+}
+
+.orderBadges {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.badgePaid {
+  font-size: 0.7rem;
+  font-weight: 800;
+  text-transform: uppercase;
+  padding: 3px 8px;
+  border-radius: var(--radius-full);
+  background-color: rgba(16, 185, 129, 0.12);
+  color: #10b981;
+  border: 1px solid rgba(16, 185, 129, 0.3);
+}
+
+.badgePending {
+  font-size: 0.7rem;
+  font-weight: 800;
+  text-transform: uppercase;
+  padding: 3px 8px;
+  border-radius: var(--radius-full);
+  background-color: rgba(245, 158, 11, 0.12);
+  color: #f59e0b;
+  border: 1px solid rgba(245, 158, 11, 0.3);
+}
+
+/* ── Live Tracking Progress Bar ── */
+.trackingSection {
+  padding: 1.75rem 1.75rem 1.25rem;
+  border-bottom: 1px solid var(--border-light);
+  background: var(--bg-card);
+}
+
+.trackingLabel {
+  font-size: 0.75rem;
+  font-weight: 800;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: var(--text-muted);
+  margin-bottom: 1.25rem;
+}
+
+.progressTrack {
+  display: flex;
+  justify-content: space-between;
+  position: relative;
+}
+
+.progressTrack::before {
+  content: '';
+  position: absolute;
+  top: 14px;
+  left: 20px;
+  right: 20px;
+  height: 3px;
+  background-color: var(--border-light);
+  z-index: 1;
+}
+
+.progressTrackLine {
+  position: absolute;
+  top: 14px;
+  left: 20px;
+  height: 3px;
+  background-color: #0284c7;
+  z-index: 2;
+  transition: width 0.35s ease;
+}
+
+.trackStep {
+  position: relative;
+  z-index: 3;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  text-align: center;
+  max-width: 90px;
+}
+
+.stepDot {
+  width: 30px;
+  height: 30px;
+  border-radius: 50%;
+  background-color: var(--bg-secondary);
+  border: 2px solid var(--border-light);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 0.75rem;
+  font-weight: 800;
+  color: var(--text-muted);
+  margin-bottom: 0.45rem;
+  transition: all var(--transition-fast);
+}
+
+.stepDotActive {
+  background-color: #0284c7;
+  border-color: #0284c7;
+  color: #ffffff;
+  box-shadow: 0 0 12px rgba(2, 132, 199, 0.45);
+}
+
+.stepDotCompleted {
+  background-color: #10b981;
+  border-color: #10b981;
+  color: #ffffff;
+}
+
+.stepTitle {
+  font-size: 0.72rem;
+  font-weight: 700;
+  color: var(--text-secondary);
+  line-height: 1.2;
+}
+
+.stepTitleActive {
+  color: var(--text-primary);
+  font-weight: 800;
+}
+
+/* ── Order Items ── */
+.orderBody {
+  padding: 1.5rem 1.75rem;
+}
+
+.itemsTitle {
+  font-size: 0.75rem;
+  font-weight: 800;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: var(--text-muted);
+  margin-bottom: 1rem;
+}
+
+.itemsList {
+  display: flex;
+  flex-direction: column;
+  gap: 0.85rem;
+  margin-bottom: 1.5rem;
+}
+
+.itemRow {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding-bottom: 0.85rem;
+  border-bottom: 1px dashed var(--border-light);
+}
+
+.itemInfo h4 {
+  font-size: 0.88rem;
+  font-weight: 800;
+  color: var(--text-primary);
+  margin-bottom: 0.2rem;
+}
+
+.itemMeta {
+  font-size: 0.78rem;
+  color: var(--text-muted);
+}
+
+.itemPrice {
+  font-size: 0.92rem;
+  font-weight: 800;
+  color: var(--text-primary);
+}
+
+/* ── Order Destination & Totals ── */
+.orderFooterGrid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 1.5rem;
+  padding-top: 1rem;
+  border-top: 1px solid var(--border-light);
+}
+
+.destCol h5, .totalCol h5 {
+  font-size: 0.72rem;
+  font-weight: 800;
+  text-transform: uppercase;
+  color: var(--text-muted);
+  margin-bottom: 0.4rem;
+}
+
+.destText {
+  font-size: 0.82rem;
+  color: var(--text-secondary);
+  line-height: 1.45;
+}
+
+.totalAmount {
+  font-size: 1.35rem;
+  font-weight: 900;
+  color: var(--accent-primary);
+}
+
+.orderActions {
+  padding: 1rem 1.75rem;
+  background-color: var(--bg-secondary);
+  border-top: 1px solid var(--border-light);
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 0.75rem;
+}
+
+.whatsappTrackBtn {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.45rem;
+  color: #10b981;
+  font-size: 0.78rem;
+  font-weight: 800;
+  text-decoration: none;
+  transition: opacity var(--transition-fast);
+}
+
+.whatsappTrackBtn:hover {
+  opacity: 0.85;
+}
+
+.emptyCard {
+  text-align: center;
+  padding: 3rem 1.5rem;
+  background: var(--bg-card);
+  border: 1px dashed var(--border-light);
+  border-radius: var(--radius-sm);
+  color: var(--text-muted);
+}
+
+@media (max-width: 640px) {
+  .lookupForm {
+    flex-direction: column;
+  }
+  .lookupInput {
+    width: 100%;
+  }
+  .lookupCard {
+    padding: 1.25rem 1rem;
+  }
+  .orderFooterGrid {
+    grid-template-columns: 1fr;
+  }
+}

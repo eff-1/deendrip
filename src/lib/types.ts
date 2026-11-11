@@ -101,3 +101,16 @@ export interface AdminUser {
   name: string;
   role: 'superadmin' | 'manager';
 }
+
+export interface Customer {
+  id: string;
+  username: string;
+  fullName: string;
+  email: string;
+  phone: string;
+  streetAddress: string;
+  city: string;
+  state: string;
+  createdAt: string;
+  updatedAt?: string | null;
+}

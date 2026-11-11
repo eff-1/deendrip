@@ -129,15 +129,38 @@ export default function Navbar() {
         setCustomerName(parsed.name || null);
       }
 
-      if (sessionStorage.getItem('deendrip_announcement_dismissed') === 'true') {
+      // Check if user explicitly cancelled the announcement bar
+      const isCancelled = localStorage.getItem('deendrip_announcement_cancelled') === 'true';
+      if (isCancelled) {
         setAnnouncementDismissed(true);
-      } else {
-        // Delayed entrance: 1.4 seconds after loading it flashes/slides up like an ad banner
+        return;
+      }
+
+      // If not cancelled: track impressions (up to 2 per session) then 10 minute cooldown
+      const now = Date.now();
+      const lastShown = parseInt(localStorage.getItem('deendrip_announcement_last_shown') || '0', 10);
+      const impressionCount = parseInt(sessionStorage.getItem('deendrip_announcement_impressions') || '0', 10);
+      const tenMinutes = 10 * 60 * 1000;
+
+      if (impressionCount >= 2 && (now - lastShown < tenMinutes)) {
+        setAnnouncementDismissed(true);
+        const remaining = Math.max(1000, tenMinutes - (now - lastShown));
         const timer = setTimeout(() => {
+          sessionStorage.setItem('deendrip_announcement_impressions', '0');
+          setAnnouncementDismissed(false);
           setAnnouncementVisible(true);
-        }, 1400);
+        }, remaining);
         return () => clearTimeout(timer);
       }
+
+      // Flash in smoothly 1.2s after loading
+      const timer = setTimeout(() => {
+        setAnnouncementVisible(true);
+        sessionStorage.setItem('deendrip_announcement_impressions', (impressionCount + 1).toString());
+        localStorage.setItem('deendrip_announcement_last_shown', Date.now().toString());
+      }, 1200);
+
+      return () => clearTimeout(timer);
     } catch {}
   }, []);
 
@@ -167,17 +190,22 @@ export default function Navbar() {
     };
   }, [mobileMenuOpen]);
 
-  const handleDismissAnnouncement = () => {
+  const handleDismissAnnouncement = (e?: React.MouseEvent) => {
+    if (e) {
+      e.preventDefault();
+      e.stopPropagation();
+    }
     setAnnouncementVisible(false);
     setAnnouncementDismissed(true);
     try {
-      sessionStorage.setItem('deendrip_announcement_dismissed', 'true');
+      localStorage.setItem('deendrip_announcement_cancelled', 'true');
+      localStorage.setItem('deendrip_announcement_cancelled_at', Date.now().toString());
     } catch {}
   };
 
-  const logoSrc = (theme === 'dark' || (isHomePage && !isScrolled))
-    ? '/assets/brand/deen-drip-logo-white.png'
-    : '/assets/brand/deen-drip-logo-black.png';
+  const logoSrc = theme === 'light'
+    ? '/assets/brand/deen-drip-logo-black.png'
+    : '/assets/brand/deen-drip-logo-white.png';
 
   return (
     <>
@@ -199,9 +227,15 @@ export default function Navbar() {
         {/* 1. Top Announcement Bar (In DOM, cleanly hidden via CSS in .navbarScrolled state) */}
         {announcementVisible && !announcementDismissed && (
           <div className={styles.announcementBar}>
-            <span className={styles.announcementText}>
-              FREE DELIVERY IN LAGOS ON ORDERS OVER ₦85,000 • NEW AW-26 DROP LIVE
-            </span>
+            <Link
+              href="/vouchers"
+              className={styles.announcementText}
+              aria-label="View Active Vouchers & Promo Drops"
+            >
+              <span className={styles.announcementHighlight}>FREE LAGOS DELIVERY</span>
+              <span>ON ORDERS OVER ₦85,000 •</span>
+              <span className={styles.announcementAction}>3 ACTIVE PROMOS LIVE →</span>
+            </Link>
             <button
               type="button"
               onClick={handleDismissAnnouncement}
@@ -365,7 +399,7 @@ export default function Navbar() {
                         </button>
 
                         <Link
-                          href="/shop"
+                          href="/orders"
                           className={styles.dropdownItem}
                           onClick={() => setAccountDropdownOpen(false)}
                         >
@@ -388,20 +422,17 @@ export default function Navbar() {
                           <span>Saved Items / Wishlist</span>
                         </Link>
 
-                        <button
-                          type="button"
+                        <Link
+                          href="/vouchers"
                           className={styles.dropdownItem}
-                          onClick={() => {
-                            setAccountDropdownOpen(false);
-                            setIsAccountOpen(true);
-                          }}
+                          onClick={() => setAccountDropdownOpen(false)}
                         >
                           <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
                             <rect x="2" y="4" width="20" height="16" rx="2" />
                             <line x1="2" y1="10" x2="22" y2="10" />
                           </svg>
-                          <span>Vouchers (2 Available)</span>
-                        </button>
+                          <span>Vouchers (3 Available)</span>
+                        </Link>
                       </div>
 
                       <div className={styles.dropdownDivider} />
@@ -454,7 +485,7 @@ export default function Navbar() {
                         </button>
 
                         <Link
-                          href="/shop"
+                          href="/orders"
                           className={styles.dropdownItem}
                           onClick={() => setAccountDropdownOpen(false)}
                         >
@@ -477,20 +508,17 @@ export default function Navbar() {
                           <span>Saved Items / Wishlist</span>
                         </Link>
 
-                        <button
-                          type="button"
+                        <Link
+                          href="/vouchers"
                           className={styles.dropdownItem}
-                          onClick={() => {
-                            setAccountDropdownOpen(false);
-                            setIsAccountOpen(true);
-                          }}
+                          onClick={() => setAccountDropdownOpen(false)}
                         >
                           <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
                             <rect x="2" y="4" width="20" height="16" rx="2" />
                             <line x1="2" y1="10" x2="22" y2="10" />
                           </svg>
-                          <span>Vouchers & Offers</span>
-                        </button>
+                          <span>Vouchers (3 Available)</span>
+                        </Link>
                       </div>
                     </>
                   )}
@@ -647,7 +675,7 @@ export default function Navbar() {
             <ul className={styles.drawerSubList}>
               <li>
                 <Link
-                  href="/shop"
+                  href="/orders"
                   className={styles.drawerSubItem}
                   onClick={() => setMobileMenuOpen(false)}
                 >
@@ -663,21 +691,7 @@ export default function Navbar() {
               </li>
               <li>
                 <Link
-                  href="/contact"
-                  className={styles.drawerSubItem}
-                  onClick={() => setMobileMenuOpen(false)}
-                >
-                  <span className={styles.drawerIconWrapper}>
-                    <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8">
-                      <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z" />
-                    </svg>
-                  </span>
-                  <span>Pending Reviews & Feedback</span>
-                </Link>
-              </li>
-              <li>
-                <Link
-                  href="/collections"
+                  href="/vouchers"
                   className={styles.drawerSubItem}
                   onClick={() => setMobileMenuOpen(false)}
                 >
@@ -744,9 +758,12 @@ export default function Navbar() {
                   onClick={() => setMobileMenuOpen(false)}
                 >
                   <span className={styles.drawerIconWrapper}>
-                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8">
-                      <path d="M3 14c0-4.4 3.6-8 8-8s8 3.6 8 8v2H3v-2z" />
-                      <path d="M3 16h18a3 3 0 0 1 0 6H3v-6z" />
+                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+                      <circle cx="9.5" cy="5.5" r="1" fill="currentColor" />
+                      <path d="M2.5 15C2.5 8.5 6 6 9.5 6c3.5 0 5.5 3 6 7" />
+                      <path d="M15.5 13c2 0 5 .5 6.5 1.5-1.5 1.5-4.5 1.5-7.5 1L2.5 15z" />
+                      <path d="M9.5 6.5v8.5" opacity="0.6" strokeDasharray="1.5 1.5" />
+                      <path d="M2.5 12.5a2.5 2.5 0 0 1 2.5 2.5" />
                     </svg>
                   </span>
                   <span>Caps & Headwear</span>
@@ -844,7 +861,7 @@ export default function Navbar() {
           {/* Section 4: WhatsApp Concierge & Support Links */}
           <div className={styles.drawerFooter}>
             <a
-              href="https://wa.me/2348000000000?text=Hello%20Deen%20Drip%20Concierge"
+              href="https://wa.me/2349064147689?text=Hello%20Deen%20Drip%20Concierge,%20I%20have%20an%20inquiry%20regarding%20my%20order"
               target="_blank"
               rel="noopener noreferrer"
               className={styles.whatsappLink}
@@ -852,7 +869,7 @@ export default function Navbar() {
               <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor">
                 <path d="M.057 24l1.687-6.163c-1.041-1.804-1.588-3.849-1.587-5.946.003-6.556 5.338-11.891 11.893-11.891 3.181.001 6.167 1.24 8.413 3.488 2.245 2.248 3.481 5.236 3.48 8.414-.003 6.557-5.338 11.892-11.893 11.892-1.99-.001-3.951-.5-5.688-1.448l-6.305 1.654zm6.597-3.807c1.676.995 3.276 1.591 5.392 1.592 5.448 0 9.886-4.434 9.889-9.885.002-5.462-4.415-9.89-9.881-9.892-5.452 0-9.887 4.434-9.889 9.884-.001 2.225.651 3.891 1.746 5.634l-.999 3.648 3.742-.981z" />
               </svg>
-              <span>Lagos Concierge (+234)</span>
+              <span>WhatsApp Concierge (+234 906 414 7689)</span>
             </a>
 
             <div style={{ display: 'flex', justifyContent: 'space-between', padding: '0.2rem 0.2rem' }}>
@@ -864,11 +881,11 @@ export default function Navbar() {
                 Brand Manifesto
               </Link>
               <Link
-                href="/admin"
+                href="/contact"
                 style={{ fontSize: '0.72rem', color: 'var(--text-muted)', textDecoration: 'none' }}
                 onClick={() => setMobileMenuOpen(false)}
               >
-                Staff Portal
+                Direct Support
               </Link>
             </div>
           </div>

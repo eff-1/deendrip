@@ -2,8 +2,8 @@ import { initialProducts } from './initialProducts';
 import { DatabaseSync } from 'node:sqlite';
 import path from 'node:path';
 import fs from 'node:fs';
-import { hashPassword } from './auth';
-import type { Product, ProductVariant, ProductImage, Order, OrderItem, Category, PaymentStatus, FulfillmentStatus } from './types';
+import { hashPassword, verifyPassword } from './auth';
+import type { Product, ProductVariant, ProductImage, Order, OrderItem, Category, PaymentStatus, FulfillmentStatus, Customer } from './types';
 import { calculateOrderShipping } from './shipping';
 
 let dbInstance: DatabaseSync | null = null;
@@ -184,6 +184,23 @@ function initSchema(db: DatabaseSync) {
       updated_at TEXT NOT NULL
     );
 
+    CREATE TABLE IF NOT EXISTS customers (
+      id TEXT PRIMARY KEY,
+      username TEXT UNIQUE NOT NULL,
+      full_name TEXT NOT NULL,
+      email TEXT UNIQUE NOT NULL,
+      phone TEXT NOT NULL,
+      street_address TEXT NOT NULL,
+      city TEXT NOT NULL,
+      state TEXT NOT NULL,
+      password_hash TEXT NOT NULL,
+      salt TEXT NOT NULL,
+      created_at TEXT NOT NULL,
+      updated_at TEXT
+    );
+
+    CREATE INDEX IF NOT EXISTS idx_customers_email ON customers(email);
+    CREATE INDEX IF NOT EXISTS idx_customers_username ON customers(username);
     CREATE INDEX IF NOT EXISTS idx_products_category ON products(category);
     CREATE INDEX IF NOT EXISTS idx_products_slug ON products(slug);
     CREATE INDEX IF NOT EXISTS idx_variants_product ON product_variants(product_id);
@@ -848,6 +865,15 @@ export function getOrderById(id: string): Order | null {
   return rowToOrder(r, rowsToItems(itemRows));
 }
 
+export function getOrdersByCustomerEmail(email: string): Order[] {
+  const db = getDb();
+  const rows = db.prepare('SELECT * FROM orders WHERE LOWER(customer_email) = LOWER(?) ORDER BY created_at DESC').all(email) as any[];
+  return rows.map(r => {
+    const itemRows = db.prepare('SELECT * FROM order_items WHERE order_id = ?').all(r.id) as any[];
+    return rowToOrder(r, rowsToItems(itemRows));
+  });
+}
+
 export function getAllOrders(options?: {
   paymentStatus?: PaymentStatus | 'all';
   fulfillmentStatus?: FulfillmentStatus | 'all';
@@ -1062,3 +1088,127 @@ export function setStoreSetting(key: string, value: string): void {
     ON CONFLICT(key) DO UPDATE SET value = excluded.value, updated_at = excluded.updated_at
   `).run(key, value, new Date().toISOString());
 }
+
+// -------------------------------------------------------------
+// Customers
+// -------------------------------------------------------------
+
+export interface CustomerRow {
+  id: string;
+  username: string;
+  full_name: string;
+  email: string;
+  phone: string;
+  street_address: string;
+  city: string;
+  state: string;
+  password_hash: string;
+  salt: string;
+  created_at: string;
+  updated_at: string | null;
+}
+
+function rowToCustomer(row: CustomerRow): Customer {
+  return {
+    id: row.id,
+    username: row.username,
+    fullName: row.full_name,
+    email: row.email,
+    phone: row.phone,
+    streetAddress: row.street_address,
+    city: row.city,
+    state: row.state,
+    createdAt: row.created_at,
+    updatedAt: row.updated_at,
+  };
+}
+
+export function createCustomer(data: {
+  username: string;
+  fullName: string;
+  email: string;
+  phone: string;
+  streetAddress: string;
+  city: string;
+  state: string;
+  password: string;
+}): Customer {
+  const db = getDb();
+  const id = `cust_${Date.now()}_${Math.random().toString(36).substring(2, 7)}`;
+  const now = new Date().toISOString();
+  const { hash, salt } = hashPassword(data.password);
+
+  db.prepare(`
+    INSERT INTO customers (id, username, full_name, email, phone, street_address, city, state, password_hash, salt, created_at, updated_at)
+    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+  `).run(
+    id,
+    data.username.trim().toLowerCase(),
+    data.fullName.trim(),
+    data.email.trim().toLowerCase(),
+    data.phone.trim(),
+    data.streetAddress.trim(),
+    data.city.trim(),
+    data.state.trim(),
+    hash,
+    salt,
+    now,
+    now
+  );
+
+  return {
+    id,
+    username: data.username.trim().toLowerCase(),
+    fullName: data.fullName.trim(),
+    email: data.email.trim().toLowerCase(),
+    phone: data.phone.trim(),
+    streetAddress: data.streetAddress.trim(),
+    city: data.city.trim(),
+    state: data.state.trim(),
+    createdAt: now,
+    updatedAt: now,
+  };
+}
+
+export function getCustomerById(id: string): Customer | null {
+  const db = getDb();
+  const row = db.prepare('SELECT * FROM customers WHERE id = ?').get(id) as CustomerRow | undefined;
+  return row ? rowToCustomer(row) : null;
+}
+
+export function getCustomerByEmail(email: string): Customer | null {
+  const db = getDb();
+  const row = db.prepare('SELECT * FROM customers WHERE LOWER(email) = LOWER(?)').get(email.trim()) as CustomerRow | undefined;
+  return row ? rowToCustomer(row) : null;
+}
+
+export function getCustomerByUsername(username: string): Customer | null {
+  const db = getDb();
+  const row = db.prepare('SELECT * FROM customers WHERE LOWER(username) = LOWER(?)').get(username.trim()) as CustomerRow | undefined;
+  return row ? rowToCustomer(row) : null;
+}
+
+export function verifyCustomerLogin(identifier: string, password: string): Customer | null {
+  const db = getDb();
+  const clean = identifier.trim().toLowerCase();
+  const row = db.prepare('SELECT * FROM customers WHERE LOWER(email) = ? OR LOWER(username) = ?').get(clean, clean) as CustomerRow | undefined;
+  if (!row) return null;
+  const isValid = verifyPassword(password, row.password_hash, row.salt);
+  if (!isValid) return null;
+  return rowToCustomer(row);
+}
+
+export function updateCustomerAddress(
+  id: string,
+  address: { streetAddress: string; city: string; state: string; phone?: string }
+): boolean {
+  const db = getDb();
+  const now = new Date().toISOString();
+  const res = db.prepare(`
+    UPDATE customers
+    SET street_address = ?, city = ?, state = ?, phone = COALESCE(?, phone), updated_at = ?
+    WHERE id = ?
+  `).run(address.streetAddress.trim(), address.city.trim(), address.state.trim(), address.phone?.trim() ?? null, now, id);
+  return res.changes > 0;
+}
+

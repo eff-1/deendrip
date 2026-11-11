@@ -78,7 +78,7 @@ export default function Footer() {
                 <Link href="/privacy">Privacy Policy</Link>
               </li>
               <li className={styles.linkItem}>
-                <Link href="/admin">Staff Admin Portal</Link>
+                <Link href="/vouchers">Vouchers & Promos</Link>
               </li>
             </ul>
           </div>

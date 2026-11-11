@@ -221,10 +221,10 @@ export default function AccountModal({
                 <span className={styles.statNum}>{wishlistCount}</span>
                 <span className={styles.statLabel}>Saved Items</span>
               </Link>
-              <div className={styles.statBox}>
-                <span className={styles.statNum}>2</span>
+              <Link href="/vouchers" onClick={onClose} className={styles.statBox}>
+                <span className={styles.statNum}>3</span>
                 <span className={styles.statLabel}>Active Vouchers</span>
-              </div>
+              </Link>
             </div>
 
             {/* Saved Delivery Info */}
@@ -246,15 +246,13 @@ export default function AccountModal({
 
             {/* Member Exclusive Vouchers */}
             <div className={styles.voucherSection}>
-              <span className={styles.infoSectionTitle}>Your Active Member Vouchers</span>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.65rem' }}>
+                <span className={styles.infoSectionTitle}>Your Active Member Vouchers (3)</span>
+                <Link href="/vouchers" onClick={onClose} style={{ fontSize: '0.74rem', color: 'var(--accent-primary)', textDecoration: 'none', fontWeight: 700 }}>
+                  View All Terms →
+                </Link>
+              </div>
               <div className={styles.voucherGrid}>
-                <div className={styles.voucherCard} onClick={() => copyCode('DEEN10')}>
-                  <div className={styles.voucherCode}>DEEN10</div>
-                  <div className={styles.voucherDesc}>10% OFF on all items</div>
-                  <button type="button" className={styles.voucherCopyBtn}>
-                    {copiedVoucher === 'DEEN10' ? 'COPIED ✓' : 'TAP TO COPY'}
-                  </button>
-                </div>
                 <div className={styles.voucherCard} onClick={() => copyCode('FREESHIP')}>
                   <div className={styles.voucherCode}>FREESHIP</div>
                   <div className={styles.voucherDesc}>Free Lagos delivery (₦85k+)</div>
@@ -262,12 +260,29 @@ export default function AccountModal({
                     {copiedVoucher === 'FREESHIP' ? 'COPIED ✓' : 'TAP TO COPY'}
                   </button>
                 </div>
+                <div className={styles.voucherCard} onClick={() => copyCode('DEEN10')}>
+                  <div className={styles.voucherCode}>DEEN10</div>
+                  <div className={styles.voucherDesc}>10% OFF on all items</div>
+                  <button type="button" className={styles.voucherCopyBtn}>
+                    {copiedVoucher === 'DEEN10' ? 'COPIED ✓' : 'TAP TO COPY'}
+                  </button>
+                </div>
+                <div className={styles.voucherCard} onClick={() => copyCode('DRIPVIP')}>
+                  <div className={styles.voucherCode}>DRIPVIP</div>
+                  <div className={styles.voucherDesc}>₦5,000 OFF on orders ₦100k+</div>
+                  <button type="button" className={styles.voucherCopyBtn}>
+                    {copiedVoucher === 'DRIPVIP' ? 'COPIED ✓' : 'TAP TO COPY'}
+                  </button>
+                </div>
               </div>
             </div>
 
             {/* Quick Actions */}
             <div className={styles.profileActions}>
-              <Link href="/shop" onClick={onClose} className="btn btn-sky btn-sm" style={{ width: '100%', justifyContent: 'center' }}>
+              <Link href="/orders" onClick={onClose} className="btn btn-sky btn-sm" style={{ width: '100%', justifyContent: 'center' }}>
+                Track Orders & Delivery Status ↗
+              </Link>
+              <Link href="/shop" onClick={onClose} className="btn btn-outline btn-sm" style={{ width: '100%', justifyContent: 'center' }}>
                 Shop Latest AW-26 Drops →
               </Link>
               <Link href="/wishlist" onClick={onClose} className="btn btn-outline btn-sm" style={{ width: '100%', justifyContent: 'center' }}>

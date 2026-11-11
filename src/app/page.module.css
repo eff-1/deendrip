@@ -338,31 +338,39 @@
     grid-template-columns: repeat(2, 1fr);
   }
 
-  /* Assurance Bar — Single Straight Line on Mobile */
+  /* Assurance Bar — Symmetrically Centered 3 Columns on Mobile */
   .assuranceBar {
-    padding: 12px 0;
+    padding: 14px 0;
     background-color: #06080e;
     border-top: 1px solid rgba(255, 255, 255, 0.08);
     border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+    width: 100%;
+    overflow: hidden;
   }
 
   .assuranceGrid {
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
+    display: grid;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
     gap: 0;
     width: 100%;
+    max-width: 100%;
+    margin: 0 auto;
+    padding: 0 4px;
+    box-sizing: border-box;
   }
 
   .assuranceItem {
-    flex: 1;
+    width: 100%;
     display: flex;
     flex-direction: column;
     align-items: center;
+    justify-content: center;
     text-align: center;
-    gap: 5px;
-    padding: 4px 6px;
+    gap: 4px;
+    padding: 2px 4px;
     position: relative;
+    box-sizing: border-box;
+    overflow: hidden;
   }
 
   /* Fine luxury hairline divider between items */
@@ -377,40 +385,55 @@
   }
 
   .assuranceIcon {
-    width: 28px;
-    height: 28px;
+    width: 26px;
+    height: 26px;
     background-color: rgba(255, 255, 255, 0.04);
     border: 1px solid rgba(255, 255, 255, 0.1);
     color: #94a3b8;
-    margin: 0;
+    margin: 0 auto;
+    border-radius: var(--radius-full);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex-shrink: 0;
   }
 
   .assuranceIcon svg {
-    width: 14px;
-    height: 14px;
+    width: 13px;
+    height: 13px;
   }
 
   .assuranceContent {
     display: flex;
     flex-direction: column;
     align-items: center;
+    justify-content: center;
+    text-align: center;
+    width: 100%;
+    min-width: 0;
   }
 
   .assuranceTitle {
-    font-size: 0.625rem;
-    font-weight: 700;
-    letter-spacing: 0.03em;
+    font-size: clamp(0.56rem, 2.15vw, 0.65rem);
+    font-weight: 800;
+    letter-spacing: 0.02em;
     text-transform: uppercase;
     color: #f1f5f9;
-    line-height: 1.15;
+    line-height: 1.2;
     margin-bottom: 2px;
-    white-space: nowrap;
+    text-align: center;
+    word-break: normal;
+    overflow-wrap: break-word;
+    max-width: 100%;
   }
 
   .assuranceText {
-    font-size: 0.5625rem;
+    font-size: clamp(0.5rem, 1.95vw, 0.58rem);
     color: #94a3b8;
-    line-height: 1.1;
-    white-space: nowrap;
+    line-height: 1.15;
+    text-align: center;
+    word-break: normal;
+    overflow-wrap: break-word;
+    max-width: 100%;
   }
 }

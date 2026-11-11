@@ -80,9 +80,11 @@ function CategoryIcon({ category }: { category: Category | 'all' }) {
     case 'caps':
       return (
         <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
-          <path d="M4 14a8 8 0 0 1 15-3.5L21 14H4z" />
-          <path d="M2 14c4 0 7 1.5 10 1.5s6-1.5 10-1.5" />
-          <circle cx="12" cy="7" r="1.2" fill="currentColor" />
+          <circle cx="9.5" cy="5.5" r="1.1" fill="currentColor" />
+          <path d="M2.5 15C2.5 8.5 6 6 9.5 6c3.5 0 5.5 3 6 7" />
+          <path d="M15.5 13c2 0 5 .5 6.5 1.5-1.5 1.5-4.5 1.5-7.5 1L2.5 15z" />
+          <path d="M9.5 6.5v8.5" opacity="0.6" strokeDasharray="1.5 1.5" />
+          <path d="M2.5 12.5a2.5 2.5 0 0 1 2.5 2.5" />
         </svg>
       );
     case 'tees':
@@ -135,20 +137,13 @@ export default function ShopHeaderFilter({
 
   return (
     <div className={styles.wrapper}>
-      {/* Stable Editorial Hero Banner */}
+      {/* Sleek Minimalist Shop Header */}
       <header className={styles.shopHero}>
         <div className="container">
           <div className={styles.heroInner}>
             <div className={styles.heroText}>
-              <div className={styles.tagRow}>
-                <span className={styles.sectionTag}>{activeMeta.tag}</span>
-                <span className={styles.stockLiveBadge}>
-                  <span className={styles.livePulse} />
-                  {productCount} AUTHENTIC PIECES
-                </span>
-              </div>
+              <span className={styles.sectionTag}>{activeMeta.tag}</span>
               <h1 className={styles.shopTitle}>{activeMeta.title}</h1>
-              <p className={styles.shopSubtitle}>{activeMeta.description}</p>
             </div>
           </div>
         </div>

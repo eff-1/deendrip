@@ -1,6 +1,10 @@
 export function formatNaira(kobo: number): string {
   const naira = kobo / 100;
-  return `₦${naira.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
+  const hasDecimals = naira % 1 !== 0;
+  return `₦${naira.toLocaleString(undefined, {
+    minimumFractionDigits: hasDecimals ? 2 : 0,
+    maximumFractionDigits: 2,
+  })}`;
 }
 
 export function formatDate(iso: string): string {
