@@ -850,28 +850,28 @@ export function createOrderWithItems(orderData: {
           now,
           now
         ]
+      }).then(async () => {
+        for (let i = 0; i < orderData.items.length; i++) {
+          const it = orderData.items[i];
+          await turso.execute({
+            sql: `INSERT OR REPLACE INTO order_items (
+              id, order_id, product_id, variant_id, product_name_snapshot,
+              variant_name_snapshot, unit_price_kobo_snapshot, quantity, subtotal_kobo
+            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+            args: [
+              `item-${orderId}-${i + 1}`,
+              orderId,
+              it.productId,
+              it.variantId,
+              it.productNameSnapshot,
+              it.variantNameSnapshot,
+              it.unitPriceKoboSnapshot,
+              it.quantity,
+              it.subtotalKobo
+            ]
+          });
+        }
       }).catch(err => console.error('Turso order sync error:', err));
-
-      for (let i = 0; i < orderData.items.length; i++) {
-        const it = orderData.items[i];
-        turso.execute({
-          sql: `INSERT OR REPLACE INTO order_items (
-            id, order_id, product_id, variant_id, product_name_snapshot,
-            variant_name_snapshot, unit_price_kobo_snapshot, quantity, subtotal_kobo
-          ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`,
-          args: [
-            `item-${orderId}-${i + 1}`,
-            orderId,
-            it.productId,
-            it.variantId,
-            it.productNameSnapshot,
-            it.variantNameSnapshot,
-            it.unitPriceKoboSnapshot,
-            it.quantity,
-            it.subtotalKobo
-          ]
-        }).catch(err => console.error('Turso order_item sync error:', err));
-      }
     }
 
     return getOrderByReference(orderData.orderReference)!;
