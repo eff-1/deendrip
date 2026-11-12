@@ -2,11 +2,11 @@ import { initialProducts } from '../src/lib/initialProducts';
 import { hashPassword } from '../src/lib/auth';
 import { getTursoClient } from '../src/lib/turso';
 
-const client = getTursoClient();
-if (!client) {
-  console.error('TURSO_DATABASE_URL and TURSO_AUTH_TOKEN must be set');
-  process.exit(1);
+const clientInstance = getTursoClient();
+if (!clientInstance) {
+  throw new Error('TURSO_DATABASE_URL and TURSO_AUTH_TOKEN must be set');
 }
+const client = clientInstance;
 
 async function initTurso() {
   console.log('1. Creating schema tables...');

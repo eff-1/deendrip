@@ -88,13 +88,13 @@ export async function sendEmail({
     }
   }
 
-  // 2. Try SMTP / Nodemailer (e.g. Gmail App Password: SMTP_USER=deendripclothing@gmail.com, SMTP_PASS=xxxx)
-  const smtpPass = process.env.SMTP_PASS || process.env.EMAIL_SERVER_PASSWORD;
-  const smtpUser = process.env.SMTP_USER || process.env.EMAIL_SERVER_USER || STORE_OWNER_EMAIL;
-  const smtpHost = process.env.SMTP_HOST || 'smtp.gmail.com';
-  const smtpPort = Number(process.env.SMTP_PORT) || 465;
+  // 2. Try SMTP if explicit environment variables are provided
+  const smtpHost = process.env.SMTP_HOST;
+  const smtpPort = process.env.SMTP_PORT ? Number(process.env.SMTP_PORT) : 465;
+  const smtpUser = process.env.SMTP_USER;
+  const smtpPass = process.env.SMTP_PASS;
 
-  if (smtpPass) {
+  if (smtpHost && smtpUser && smtpPass) {
     try {
       const transporter = nodemailer.createTransport({
         host: smtpHost,
