@@ -43,8 +43,9 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: 'Invalid credentials' }, { status: 401 });
     }
 
+    const cleanEmail = email.trim().toLowerCase();
     const db = getDb();
-    const admin = db.prepare('SELECT * FROM admins WHERE email = ?').get(email.trim().toLowerCase()) as {
+    let admin = db.prepare('SELECT * FROM admins WHERE email = ?').get(cleanEmail) as {
       id: string;
       email: string;
       password_hash: string;
@@ -52,6 +53,37 @@ export async function POST(request: Request) {
       name: string;
       role: string;
     } | undefined;
+
+    if (!admin) {
+      const { getTursoClient } = await import('@/lib/turso');
+      const turso = getTursoClient();
+      if (turso) {
+        try {
+          const res = await turso.execute({
+            sql: 'SELECT * FROM admins WHERE email = ?',
+            args: [cleanEmail]
+          });
+          if (res.rows.length > 0) {
+            const r = res.rows[0];
+            admin = {
+              id: String(r.id),
+              email: String(r.email),
+              password_hash: String(r.password_hash),
+              salt: String(r.salt),
+              name: String(r.name),
+              role: String(r.role),
+            };
+            // Warm local cache
+            try {
+              db.prepare('INSERT OR REPLACE INTO admins (id, email, password_hash, salt, name, role, created_at) VALUES (?, ?, ?, ?, ?, ?, ?)')
+                .run(admin.id, admin.email, admin.password_hash, admin.salt, admin.name, admin.role, new Date().toISOString());
+            } catch {}
+          }
+        } catch (err) {
+          console.error('Turso admin lookup error:', err);
+        }
+      }
+    }
 
     // Constant-time failure — always run verifyPassword even if admin not found (using dummy values)
     const isValid = admin

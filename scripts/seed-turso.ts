@@ -212,14 +212,19 @@ async function initTurso() {
 
   const now = new Date().toISOString();
 
-  // 3. Seed Admin
+  // 3. Seed Admin accounts
   const { hash, salt } = hashPassword('DeenDripAdmin2026!');
   await client.execute({
-    sql: `INSERT OR IGNORE INTO admins (id, email, password_hash, salt, name, role, created_at)
+    sql: `INSERT OR REPLACE INTO admins (id, email, password_hash, salt, name, role, created_at)
           VALUES (?, ?, ?, ?, ?, ?, ?)`,
-    args: ['admin-1', 'admin@deendrip.com', hash, salt, 'HafTech Lead Admin', 'superadmin', now]
+    args: ['admin-1', 'admin@deendrip.com', hash, salt, 'Deen Drip Admin', 'superadmin', now]
   });
-  console.log('✓ Default admin account verified.');
+  await client.execute({
+    sql: `INSERT OR REPLACE INTO admins (id, email, password_hash, salt, name, role, created_at)
+          VALUES (?, ?, ?, ?, ?, ?, ?)`,
+    args: ['admin-owner', 'deendripclothing@gmail.com', hash, salt, 'Deen Drip Owner', 'superadmin', now]
+  });
+  console.log('✓ Admin accounts verified (admin@deendrip.com & deendripclothing@gmail.com).');
 
   // 4. Seed Products if empty
   if (existingCount === 0) {

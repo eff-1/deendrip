@@ -1,5 +1,5 @@
 import { cookies } from 'next/headers';
-import { validateAdminSession, type SessionAdmin } from './db';
+import { validateAdminSessionAsync, type SessionAdmin } from './db';
 
 /**
  * Server-side utility to verify an admin session from the request cookies.
@@ -14,7 +14,7 @@ export async function getAdminFromRequest(): Promise<SessionAdmin | null> {
     const cookieStore = await cookies();
     const token = cookieStore.get('deendrip_admin_token')?.value;
     if (!token) return null;
-    return validateAdminSession(token);
+    return await validateAdminSessionAsync(token);
   } catch {
     return null;
   }

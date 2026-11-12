@@ -368,12 +368,22 @@ export function createAdminSession(adminId: string, token: string): void {
   const db = getDb();
   const now = new Date().toISOString();
   const expiresAt = new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString();
+  const sessId = `sess-${Date.now()}`;
+
   // Clean up expired sessions for this admin
   db.prepare('DELETE FROM admin_sessions WHERE admin_id = ? AND expires_at < ?').run(adminId, now);
   db.prepare(`
     INSERT INTO admin_sessions (id, admin_id, token, created_at, expires_at)
     VALUES (?, ?, ?, ?, ?)
-  `).run(`sess-${Date.now()}`, adminId, token, now, expiresAt);
+  `).run(sessId, adminId, token, now, expiresAt);
+
+  const turso = getTursoClient();
+  if (turso) {
+    turso.execute({
+      sql: 'INSERT OR REPLACE INTO admin_sessions (id, admin_id, token, created_at, expires_at) VALUES (?, ?, ?, ?, ?)',
+      args: [sessId, adminId, token, now, expiresAt]
+    }).catch(err => console.error('Turso session sync error:', err));
+  }
 }
 
 export interface SessionAdmin {
@@ -394,6 +404,55 @@ export function validateAdminSession(token: string): SessionAdmin | null {
     WHERE s.token = ? AND s.expires_at > ?
   `).get(token, now) as SessionAdmin | undefined;
   return row || null;
+}
+
+export async function validateAdminSessionAsync(token: string): Promise<SessionAdmin | null> {
+  if (!token) return null;
+  const local = validateAdminSession(token);
+  if (local) return local;
+
+  const turso = getTursoClient();
+  if (!turso) return null;
+
+  try {
+    const now = new Date().toISOString();
+    const res = await turso.execute({
+      sql: `SELECT a.id, a.email, a.name, a.role
+            FROM admin_sessions s
+            JOIN admins a ON a.id = s.admin_id
+            WHERE s.token = ? AND s.expires_at > ?`,
+      args: [token, now],
+    });
+
+    if (res.rows.length === 0) return null;
+    const r = res.rows[0];
+    const admin: SessionAdmin = {
+      id: String(r.id),
+      email: String(r.email),
+      name: String(r.name),
+      role: String(r.role),
+    };
+
+    // Warm local cache so subsequent requests are fast
+    try {
+      const db = getDb();
+      db.prepare(`
+        INSERT OR IGNORE INTO admins (id, email, password_hash, salt, name, role, created_at)
+        VALUES (?, ?, 'cached', 'cached', ?, ?, ?)
+      `).run(admin.id, admin.email, admin.name, admin.role, now);
+      db.prepare(`
+        INSERT OR REPLACE INTO admin_sessions (id, admin_id, token, created_at, expires_at)
+        VALUES (?, ?, ?, ?, ?)
+      `).run(`sess-warm-${Date.now()}`, admin.id, token, now, new Date(Date.now() + 86400000).toISOString());
+    } catch {
+      // Ignore cache write errors
+    }
+
+    return admin;
+  } catch (err) {
+    console.error('Turso validateAdminSessionAsync error:', err);
+    return null;
+  }
 }
 
 export function deleteAdminSession(token: string): void {
@@ -660,6 +719,15 @@ export function updateProduct(id: string, input: UpdateProductInput): Product | 
   vals.push(id);
 
   db.prepare(`UPDATE products SET ${fields.join(', ')} WHERE id = ?`).run(...vals);
+
+  const turso = getTursoClient();
+  if (turso) {
+    turso.execute({
+      sql: `UPDATE products SET ${fields.join(', ')} WHERE id = ?`,
+      args: vals as any[],
+    }).catch(err => console.error('Turso updateProduct sync error:', err));
+  }
+
   return getProductById(id);
 }
 
@@ -1064,6 +1132,83 @@ export function getAllOrders(options?: {
   return rows.map(r => rowToOrder(r, rowsToItems(itemsByOrderId.get(r.id) || [])));
 }
 
+export async function getAllOrdersAsync(options?: {
+  paymentStatus?: PaymentStatus | 'all';
+  fulfillmentStatus?: FulfillmentStatus | 'all';
+  searchQuery?: string;
+  limit?: number;
+  offset?: number;
+}): Promise<Order[]> {
+  const turso = getTursoClient();
+  if (!turso) {
+    return getAllOrders(options);
+  }
+
+  try {
+    let sql = 'SELECT * FROM orders WHERE 1=1';
+    const args: any[] = [];
+
+    if (options?.paymentStatus && options.paymentStatus !== 'all') {
+      sql += ' AND payment_status = ?';
+      args.push(options.paymentStatus);
+    }
+    if (options?.fulfillmentStatus && options.fulfillmentStatus !== 'all') {
+      sql += ' AND fulfillment_status = ?';
+      args.push(options.fulfillmentStatus);
+    }
+    if (options?.searchQuery) {
+      sql += ' AND (order_reference LIKE ? OR customer_name LIKE ? OR customer_email LIKE ? OR customer_phone LIKE ?)';
+      const term = `%${options.searchQuery}%`;
+      args.push(term, term, term, term);
+    }
+
+    sql += ' ORDER BY created_at DESC';
+
+    if (options?.limit) {
+      sql += ' LIMIT ?';
+      args.push(options.limit);
+      if (options.offset) {
+        sql += ' OFFSET ?';
+        args.push(options.offset);
+      }
+    }
+
+    const orderRes = await turso.execute({ sql, args });
+    if (orderRes.rows.length === 0) {
+      return getAllOrders(options);
+    }
+
+    const orderIds = orderRes.rows.map(r => String(r.id));
+    const placeholders = orderIds.map(() => '?').join(', ');
+    const itemsRes = await turso.execute({
+      sql: `SELECT * FROM order_items WHERE order_id IN (${placeholders})`,
+      args: orderIds,
+    });
+
+    const itemsByOrderId = new Map<string, OrderItem[]>();
+    for (const it of itemsRes.rows) {
+      const oid = String(it.order_id);
+      if (!itemsByOrderId.has(oid)) itemsByOrderId.set(oid, []);
+      itemsByOrderId.get(oid)!.push({
+        id: String(it.id),
+        orderId: oid,
+        productId: String(it.product_id),
+        variantId: String(it.variant_id),
+        productNameSnapshot: String(it.product_name_snapshot),
+        variantNameSnapshot: String(it.variant_name_snapshot),
+        unitPriceKoboSnapshot: Number(it.unit_price_kobo_snapshot),
+        quantity: Number(it.quantity),
+        subtotalKobo: Number(it.subtotal_kobo),
+      });
+    }
+
+    return orderRes.rows.map(r => rowToOrder(r, itemsByOrderId.get(String(r.id)) || []));
+  } catch (err) {
+    console.error('Turso getAllOrdersAsync error, falling back to local:', err);
+    return getAllOrders(options);
+  }
+}
+
 export function getOrdersCount(): number {
   const db = getDb();
   return (db.prepare('SELECT COUNT(*) as c FROM orders').get() as { c: number }).c;
@@ -1136,8 +1281,64 @@ export function getOrderNotes(orderId: string): Array<{ id: string; adminName: s
 export function updateVariantStock(variantId: string, newStock: number): boolean {
   const db = getDb();
   const res = db.prepare('UPDATE product_variants SET stock_quantity = ? WHERE id = ?').run(newStock, variantId);
+
+  const turso = getTursoClient();
+  if (turso) {
+    turso.execute({
+      sql: 'UPDATE product_variants SET stock_quantity = ? WHERE id = ?',
+      args: [newStock, variantId],
+    }).catch(err => console.error('Turso stock sync error:', err));
+  }
+
   return res.changes > 0;
 }
+
+export interface ContactInquiry {
+  id: string;
+  name: string;
+  email: string;
+  orderRef: string | null;
+  message: string;
+  createdAt: string;
+}
+
+export async function getContactInquiriesAsync(limit = 50): Promise<ContactInquiry[]> {
+  const turso = getTursoClient();
+  if (turso) {
+    try {
+      const res = await turso.execute({
+        sql: 'SELECT * FROM contact_inquiries ORDER BY created_at DESC LIMIT ?',
+        args: [limit],
+      });
+      return res.rows.map(r => ({
+        id: String(r.id),
+        name: String(r.name),
+        email: String(r.email),
+        orderRef: r.order_ref ? String(r.order_ref) : null,
+        message: String(r.message),
+        createdAt: String(r.created_at),
+      }));
+    } catch (err) {
+      console.warn('Turso contact_inquiries fetch error:', err);
+    }
+  }
+
+  try {
+    const db = getDb();
+    const rows = db.prepare('SELECT * FROM contact_inquiries ORDER BY created_at DESC LIMIT ?').all(limit) as any[];
+    return rows.map(r => ({
+      id: String(r.id),
+      name: String(r.name),
+      email: String(r.email),
+      orderRef: r.order_ref ? String(r.order_ref) : null,
+      message: String(r.message),
+      createdAt: String(r.created_at),
+    }));
+  } catch {
+    return [];
+  }
+}
+
 
 // -------------------------------------------------------------
 // Delivery Zones

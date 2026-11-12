@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server';
-import { updateOrderFulfillment, logAdminAction } from '@/lib/db';
+import { updateOrderFulfillment, logAdminAction, getOrderByReferenceAsync } from '@/lib/db';
 import { requireAdmin } from '@/lib/adminAuth';
+import { sendOrderShippedEmail } from '@/lib/email';
 import type { FulfillmentStatus } from '@/lib/types';
 
 const VALID_STATUSES: FulfillmentStatus[] = ['pending', 'processing', 'shipped', 'delivered', 'cancelled'];
@@ -34,7 +35,20 @@ export async function POST(request: Request) {
     logAdminAction(admin.id, admin.email, 'UPDATE_FULFILLMENT', 'order', orderReference,
       `Status → ${fulfillmentStatus}${trackingReference ? ` | Tracking: ${trackingReference}` : ''}`);
 
-    return NextResponse.json({ success: true, orderReference, fulfillmentStatus });
+    let emailSent = false;
+    // When marking as shipped, immediately dispatch customer waybill email via Resend
+    if (fulfillmentStatus === 'shipped') {
+      try {
+        const order = await getOrderByReferenceAsync(orderReference);
+        if (order && order.customerEmail) {
+          emailSent = await sendOrderShippedEmail(order, trackingReference || order.trackingReference || undefined);
+        }
+      } catch (emailErr) {
+        console.error('Failed to dispatch shipping email:', emailErr);
+      }
+    }
+
+    return NextResponse.json({ success: true, orderReference, fulfillmentStatus, emailSent });
   } catch (error: unknown) {
     const msg = error instanceof Error ? error.message : 'Failed to update order status';
     return NextResponse.json({ error: msg }, { status: 500 });

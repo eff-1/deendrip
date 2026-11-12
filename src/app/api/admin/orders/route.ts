@@ -1,5 +1,5 @@
 import { NextResponse } from 'next/server';
-import { getAllOrders, getOrdersCount } from '@/lib/db';
+import { getAllOrdersAsync, getOrdersCount } from '@/lib/db';
 import { requireAdmin } from '@/lib/adminAuth';
 import type { PaymentStatus, FulfillmentStatus } from '@/lib/types';
 
@@ -14,7 +14,7 @@ export async function GET(request: Request) {
   const limit = parseInt(searchParams.get('limit') || '100', 10);
   const offset = parseInt(searchParams.get('offset') || '0', 10);
 
-  const orders = getAllOrders({ paymentStatus, fulfillmentStatus, searchQuery, limit, offset });
+  const orders = await getAllOrdersAsync({ paymentStatus, fulfillmentStatus, searchQuery, limit, offset });
   const total = getOrdersCount();
 
   return NextResponse.json({ orders, total });

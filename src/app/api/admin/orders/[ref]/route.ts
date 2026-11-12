@@ -1,5 +1,5 @@
 import { NextResponse } from 'next/server';
-import { getOrderByReference, updateOrderNotes, addOrderNote, getOrderNotes, logAdminAction } from '@/lib/db';
+import { getOrderByReferenceAsync, updateOrderNotes, addOrderNote, getOrderNotes, logAdminAction } from '@/lib/db';
 import { requireAdmin } from '@/lib/adminAuth';
 
 export async function GET(
@@ -10,7 +10,7 @@ export async function GET(
   if (!admin) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
 
   const { ref } = await params;
-  const order = getOrderByReference(ref);
+  const order = await getOrderByReferenceAsync(ref);
   if (!order) return NextResponse.json({ error: 'Order not found' }, { status: 404 });
 
   const notes = getOrderNotes(order.id);
@@ -25,7 +25,7 @@ export async function PATCH(
   if (!admin) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
 
   const { ref } = await params;
-  const order = getOrderByReference(ref);
+  const order = await getOrderByReferenceAsync(ref);
   if (!order) return NextResponse.json({ error: 'Order not found' }, { status: 404 });
 
   try {
@@ -44,7 +44,7 @@ export async function PATCH(
       logAdminAction(admin.id, admin.email, 'ADD_ORDER_NOTE', 'order', order.id, ref);
     }
 
-    const updated = getOrderByReference(ref);
+    const updated = await getOrderByReferenceAsync(ref);
     const notes = getOrderNotes(order.id);
     return NextResponse.json({ order: updated, notes });
   } catch (error: unknown) {

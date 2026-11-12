@@ -608,3 +608,94 @@ export async function sendTestEmail(toEmail: string): Promise<{ success: boolean
     emailType: 'test',
   });
 }
+
+/**
+ * 5. Customer Order Shipped Email with Tracking Reference
+ */
+export async function sendOrderShippedEmail(order: Order, trackingReference?: string): Promise<boolean> {
+  const items = order.items || [];
+  const itemsHtml = items.map(item => `
+    <tr>
+      <td style="padding: 10px 0; border-bottom: 1px solid #222634; color: #f1f5f9; font-size: 13px;">
+        ${item.productNameSnapshot} (Size: ${item.variantNameSnapshot})
+      </td>
+      <td style="padding: 10px 0; border-bottom: 1px solid #222634; color: #94a3b8; font-size: 13px; text-align: right;">
+        Qty: ${item.quantity}
+      </td>
+    </tr>
+  `).join('');
+
+  const trackingDisplay = trackingReference || order.trackingReference || 'Courier Dispatch in Progress';
+
+  const html = `
+    <!DOCTYPE html>
+    <html>
+    <head><meta charset="utf-8"><title>Your Order Has Shipped - Deen Drip</title></head>
+    <body style="margin: 0; padding: 0; background-color: #06070a; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; color: #f8fafc;">
+      <table width="100%" cellpadding="0" cellspacing="0" style="background-color: #06070a; padding: 40px 15px;">
+        <tr>
+          <td align="center">
+            <table width="100%" cellpadding="0" cellspacing="0" style="max-width: 600px; background-color: #0d111a; border: 1px solid #222634; border-radius: 12px; overflow: hidden;">
+              <tr>
+                <td style="padding: 28px 36px; background: linear-gradient(180deg, #121826 0%, #0d111a 100%); border-bottom: 1px solid #222634; text-align: center;">
+                  <div style="font-size: 24px; font-weight: 900; letter-spacing: 0.15em; color: #ffffff;">DEEN DRIP</div>
+                </td>
+              </tr>
+              <tr>
+                <td style="padding: 32px 36px;">
+                  <div style="display: inline-block; font-size: 11px; font-weight: 800; color: #38bdf8; background: rgba(56, 189, 248, 0.12); border: 1px solid rgba(56, 189, 248, 0.3); padding: 4px 10px; border-radius: 9999px; text-transform: uppercase; margin-bottom: 16px;">
+                    🚀 DISPATCHED & ON THE WAY
+                  </div>
+                  <h1 style="font-size: 20px; font-weight: 800; color: #ffffff; margin: 0 0 12px 0;">
+                    Salam, ${order.customerName}
+                  </h1>
+                  <p style="font-size: 14px; line-height: 1.6; color: #94a3b8; margin: 0 0 24px 0;">
+                    Your authentic pieces from order <strong>#${order.orderReference}</strong> have been packaged and handed over to our courier for delivery.
+                  </p>
+                  <div style="background-color: #121722; border: 1px solid #222634; border-radius: 8px; padding: 18px 20px; margin-bottom: 24px;">
+                    <div style="font-size: 11px; text-transform: uppercase; letter-spacing: 0.08em; color: #64748b; font-weight: 700;">
+                      Waybill / Tracking Reference
+                    </div>
+                    <div style="font-size: 20px; font-weight: 900; color: #38bdf8; letter-spacing: 0.05em; margin-top: 4px; font-family: monospace;">
+                      ${trackingDisplay}
+                    </div>
+                  </div>
+                  <div style="font-size: 12px; font-weight: 800; text-transform: uppercase; color: #ffffff; margin-bottom: 8px;">
+                    Items In Shipment
+                  </div>
+                  <table width="100%" cellpadding="0" cellspacing="0" style="margin-bottom: 24px;">
+                    ${itemsHtml}
+                  </table>
+                  <div style="background-color: #121722; border: 1px solid #222634; border-radius: 8px; padding: 16px 20px; margin-bottom: 28px;">
+                    <div style="font-size: 11px; text-transform: uppercase; letter-spacing: 0.08em; color: #64748b; font-weight: 700;">
+                      Delivery Destination
+                    </div>
+                    <div style="font-size: 13px; color: #f1f5f9; margin-top: 4px; line-height: 1.4;">
+                      ${order.deliveryAddress}, ${order.deliveryCity}, ${order.deliveryState}
+                    </div>
+                  </div>
+                  <div style="text-align: center;">
+                    <a href="https://deendrip.shop/orders?ref=${order.orderReference}" style="display: inline-block; background-color: #0284c7; color: #ffffff; text-decoration: none; font-size: 13px; font-weight: 800; letter-spacing: 0.08em; text-transform: uppercase; padding: 14px 28px; border-radius: 9999px;">
+                      Track Order Live →
+                    </a>
+                  </div>
+                </td>
+              </tr>
+            </table>
+          </td>
+        </tr>
+      </table>
+    </body>
+    </html>
+  `;
+
+  const res = await sendEmail({
+    to: order.customerEmail,
+    subject: `🚀 Your Order Has Shipped: ${order.orderReference} - Deen Drip`,
+    html,
+    emailType: 'order_confirmation',
+    orderReference: order.orderReference,
+  });
+
+  return res.success;
+}
