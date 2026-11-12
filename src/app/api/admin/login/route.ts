@@ -1,7 +1,7 @@
 import { NextResponse } from 'next/server';
 import { cookies } from 'next/headers';
-import { getDb, createAdminSession, logAdminAction } from '@/lib/db';
-import { verifyPassword, generateToken } from '@/lib/auth';
+import { getDb, createAdminSessionAsync, logAdminAction } from '@/lib/db';
+import { verifyPassword, createSignedAdminToken } from '@/lib/auth';
 
 // Simple in-memory rate limiter — keyed by IP, allowing max 10 attempts per 15 min window
 const loginAttempts = new Map<string, { count: number; windowStart: number }>();
@@ -94,9 +94,14 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: 'Invalid credentials' }, { status: 401 });
     }
 
-    // Create a real server-side session
-    const token = generateToken(48);
-    createAdminSession(admin.id, token);
+    // Create a real server-side session with cryptographically signed token
+    const token = createSignedAdminToken({
+      id: admin.id,
+      email: admin.email,
+      name: admin.name,
+      role: admin.role,
+    });
+    await createAdminSessionAsync(admin.id, token);
     logAdminAction(admin.id, admin.email, 'LOGIN', 'session');
 
     const isLocalhost = request.url.includes('localhost') || request.url.includes('127.0.0.1');

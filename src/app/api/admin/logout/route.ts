@@ -17,11 +17,15 @@ export async function POST() {
     }
 
     cookieStore.delete('deendrip_admin_token');
-    return NextResponse.json({ success: true });
+    const response = NextResponse.json({ success: true });
+    response.cookies.delete('deendrip_admin_token');
+    return response;
   } catch {
     // Always clear the cookie even on error
     const cookieStore = await cookies();
     cookieStore.delete('deendrip_admin_token');
-    return NextResponse.json({ success: true });
+    const response = NextResponse.json({ success: true });
+    response.cookies.delete('deendrip_admin_token');
+    return response;
   }
 }

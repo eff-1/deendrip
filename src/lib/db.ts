@@ -2,7 +2,7 @@ import { initialProducts } from './initialProducts';
 import { DatabaseSync } from 'node:sqlite';
 import path from 'node:path';
 import fs from 'node:fs';
-import { hashPassword, verifyPassword } from './auth';
+import { hashPassword, verifyPassword, verifySignedAdminToken } from './auth';
 import type { Product, ProductVariant, ProductImage, Order, OrderItem, Category, PaymentStatus, FulfillmentStatus, Customer } from './types';
 import { calculateOrderShipping } from './shipping';
 import { getTursoClient } from './turso';
@@ -361,29 +361,41 @@ function seedStoreSettings(db: DatabaseSync) {
 }
 
 // -------------------------------------------------------------
-// Admin Session Management — Real server-side session store
+// Admin Session Management — Serverless & persistent session store
 // -------------------------------------------------------------
 
-export function createAdminSession(adminId: string, token: string): void {
+export async function createAdminSessionAsync(adminId: string, token: string): Promise<void> {
   const db = getDb();
   const now = new Date().toISOString();
   const expiresAt = new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString();
   const sessId = `sess-${Date.now()}`;
 
-  // Clean up expired sessions for this admin
-  db.prepare('DELETE FROM admin_sessions WHERE admin_id = ? AND expires_at < ?').run(adminId, now);
-  db.prepare(`
-    INSERT INTO admin_sessions (id, admin_id, token, created_at, expires_at)
-    VALUES (?, ?, ?, ?, ?)
-  `).run(sessId, adminId, token, now, expiresAt);
+  try {
+    // Clean up expired sessions for this admin
+    db.prepare('DELETE FROM admin_sessions WHERE admin_id = ? AND expires_at < ?').run(adminId, now);
+    db.prepare(`
+      INSERT INTO admin_sessions (id, admin_id, token, created_at, expires_at)
+      VALUES (?, ?, ?, ?, ?)
+    `).run(sessId, adminId, token, now, expiresAt);
+  } catch (err) {
+    console.error('Local db session insert error:', err);
+  }
 
   const turso = getTursoClient();
   if (turso) {
-    turso.execute({
-      sql: 'INSERT OR REPLACE INTO admin_sessions (id, admin_id, token, created_at, expires_at) VALUES (?, ?, ?, ?, ?)',
-      args: [sessId, adminId, token, now, expiresAt]
-    }).catch(err => console.error('Turso session sync error:', err));
+    try {
+      await turso.execute({
+        sql: 'INSERT OR REPLACE INTO admin_sessions (id, admin_id, token, created_at, expires_at) VALUES (?, ?, ?, ?, ?)',
+        args: [sessId, adminId, token, now, expiresAt]
+      });
+    } catch (err) {
+      console.error('Turso session sync error:', err);
+    }
   }
+}
+
+export function createAdminSession(adminId: string, token: string): void {
+  void createAdminSessionAsync(adminId, token);
 }
 
 export interface SessionAdmin {
@@ -395,22 +407,38 @@ export interface SessionAdmin {
 
 export function validateAdminSession(token: string): SessionAdmin | null {
   if (!token) return null;
-  const db = getDb();
-  const now = new Date().toISOString();
-  const row = db.prepare(`
-    SELECT a.id, a.email, a.name, a.role
-    FROM admin_sessions s
-    JOIN admins a ON a.id = s.admin_id
-    WHERE s.token = ? AND s.expires_at > ?
-  `).get(token, now) as SessionAdmin | undefined;
-  return row || null;
+  const signed = verifySignedAdminToken(token);
+  if (signed) return signed;
+
+  try {
+    const db = getDb();
+    const now = new Date().toISOString();
+    const row = db.prepare(`
+      SELECT a.id, a.email, a.name, a.role
+      FROM admin_sessions s
+      JOIN admins a ON a.id = s.admin_id
+      WHERE s.token = ? AND s.expires_at > ?
+    `).get(token, now) as SessionAdmin | undefined;
+    return row || null;
+  } catch {
+    return null;
+  }
 }
 
 export async function validateAdminSessionAsync(token: string): Promise<SessionAdmin | null> {
   if (!token) return null;
+
+  // 1. Fast, stateless cryptographic verification (works seamlessly across all serverless lambdas)
+  const signedAdmin = verifySignedAdminToken(token);
+  if (signedAdmin) {
+    return signedAdmin;
+  }
+
+  // 2. Local SQLite session verification
   const local = validateAdminSession(token);
   if (local) return local;
 
+  // 3. Turso cloud database session verification
   const turso = getTursoClient();
   if (!turso) return null;
 
@@ -433,7 +461,7 @@ export async function validateAdminSessionAsync(token: string): Promise<SessionA
       role: String(r.role),
     };
 
-    // Warm local cache so subsequent requests are fast
+    // Warm local cache so subsequent requests on this container are instant
     try {
       const db = getDb();
       db.prepare(`
@@ -456,8 +484,17 @@ export async function validateAdminSessionAsync(token: string): Promise<SessionA
 }
 
 export function deleteAdminSession(token: string): void {
-  const db = getDb();
-  db.prepare('DELETE FROM admin_sessions WHERE token = ?').run(token);
+  try {
+    const db = getDb();
+    db.prepare('DELETE FROM admin_sessions WHERE token = ?').run(token);
+  } catch {}
+  const turso = getTursoClient();
+  if (turso) {
+    turso.execute({
+      sql: 'DELETE FROM admin_sessions WHERE token = ?',
+      args: [token]
+    }).catch(() => {});
+  }
 }
 
 export function logAdminAction(

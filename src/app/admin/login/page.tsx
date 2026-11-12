@@ -34,8 +34,8 @@ export default function AdminLoginPage() {
         throw new Error(data?.error || 'Authentication failed. Please check your credentials.');
       }
 
-      // Hard redirect ensures the browser attaches the newly issued HTTP-only session cookie
-      window.location.href = '/admin';
+      // Hard navigation ensures browser attaches newly issued session cookie and replaces login from history
+      window.location.replace('/admin');
     } catch (err: unknown) {
       setError(err instanceof Error ? err.message : 'Invalid email or password');
       setLoading(false);
