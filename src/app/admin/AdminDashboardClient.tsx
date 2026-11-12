@@ -3,83 +3,128 @@
 import React, { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import Image from 'next/image';
-import type { Order, Product, FulfillmentStatus, PaymentStatus } from '@/lib/types';
-import { formatNaira, formatDate } from '@/lib/formatters';
-import styles from './admin.module.css';
+import {
+  LayoutDashboard,
+  ShoppingBag,
+  Package,
+  Users,
+  Mail,
+  BarChart3,
+  Settings,
+  Search,
+  Plus,
+  ArrowUpRight,
+  ArrowDownRight,
+  CheckCircle,
+  Truck,
+  AlertTriangle,
+  RotateCcw,
+  Sun,
+  Moon,
+  ExternalLink,
+  ChevronRight,
+  Filter,
+  Download,
+  Printer,
+  Sparkles,
+  HelpCircle,
+  Menu,
+} from 'lucide-react';
+import { useTheme } from '@/context/ThemeContext';
+import styles from './admin-dashboard.module.css';
+
+// Repo Layer
+import {
+  getDashboardMetrics,
+  getOrders,
+  getProducts,
+  getCustomers,
+  getEmailTemplates,
+  getFollowUpRules,
+  getDueFollowUps,
+  updateOrder,
+  simulateNextDeliveryStep,
+  updateProduct,
+  addProduct,
+  deleteProduct,
+  toggleFollowUpRule,
+  dismissDueFollowUp,
+  resetStore,
+} from '@/lib/repo';
+import type {
+  AdminOrder,
+  AdminProduct,
+  AdminCustomer,
+  EmailTemplate,
+  FollowUpRule,
+  DueFollowUp,
+  KpiMetric,
+  SalesDataPoint,
+  FulfillmentStage,
+} from '@/lib/repo/types';
+
+// Subcomponents
+import SalesChart from '@/components/admin/SalesChart';
+import OrderDrawer from '@/components/admin/OrderDrawer';
+import ProductDrawer from '@/components/admin/ProductDrawer';
+import CustomerDrawer from '@/components/admin/CustomerDrawer';
+import EmailComposerDrawer from '@/components/admin/EmailComposerDrawer';
+import CommandPalette from '@/components/admin/CommandPalette';
 
 interface AdminDashboardClientProps {
-  orders: Order[];
-  products: Product[];
   adminName: string;
   adminRole: string;
 }
 
-type TabId = 'overview' | 'orders' | 'products' | 'inventory' | 'emails' | 'inquiries' | 'delivery' | 'settings';
+type NavTab = 'dashboard' | 'orders' | 'products' | 'customers' | 'email' | 'analytics' | 'settings';
 
-interface EmailLogItem {
-  id: string;
-  recipient: string;
-  subject: string;
-  emailType: string;
-  orderReference: string | null;
-  status: 'delivered' | 'simulated' | 'failed';
-  provider: 'resend' | 'smtp' | 'simulation';
-  errorMessage: string | null;
-  createdAt: string;
-}
-
-interface InquiryItem {
-  id: string;
-  name: string;
-  email: string;
-  orderRef: string | null;
-  message: string;
-  createdAt: string;
-}
-
-const FULFILLMENT_STATUSES: FulfillmentStatus[] = ['pending', 'processing', 'shipped', 'delivered', 'cancelled'];
-const COURIER_OPTIONS = ['GIG Logistics', 'Fez Delivery', 'DHL Express', 'Speedaf Express', 'In-House Lagos Dispatch', 'Custom / Other'];
-
-export default function AdminDashboardClient({ orders: initialOrders, products: initialProducts, adminName, adminRole }: AdminDashboardClientProps) {
+export default function AdminDashboardClient({ adminName, adminRole }: AdminDashboardClientProps) {
   const router = useRouter();
-  const [activeTab, setActiveTab] = useState<TabId>('overview');
+  const { theme, toggleTheme } = useTheme();
 
-  const [orders, setOrders] = useState<Order[]>(initialOrders);
-  const [products, setProducts] = useState<Product[]>(initialProducts);
+  // Navigation state
+  const [activeTab, setActiveTab] = useState<NavTab>('dashboard');
+  const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
+  const [commandPaletteOpen, setCommandPaletteOpen] = useState(false);
+  const [showKeyboardHelp, setShowKeyboardHelp] = useState(false);
 
-  // Orders state
+  // Data states
+  const [loading, setLoading] = useState(true);
+  const [kpis, setKpis] = useState<KpiMetric[]>([]);
+  const [heroRevenueKobo, setHeroRevenueKobo] = useState(0);
+  const [salesChartData, setSalesChartData] = useState<SalesDataPoint[]>([]);
+  const [pipeline, setPipeline] = useState<Record<FulfillmentStage, number>>({ new: 0, packing: 0, shipped: 0, delivered: 0, cancelled: 0 });
+  const [needsAttention, setNeedsAttention] = useState<any[]>([]);
+
+  // Entities
+  const [orders, setOrders] = useState<AdminOrder[]>([]);
+  const [products, setProducts] = useState<AdminProduct[]>([]);
+  const [customers, setCustomers] = useState<AdminCustomer[]>([]);
+  const [emailTemplates, setEmailTemplates] = useState<EmailTemplate[]>([]);
+  const [followUpRules, setFollowUpRules] = useState<FollowUpRule[]>([]);
+  const [dueFollowUps, setDueFollowUps] = useState<DueFollowUp[]>([]);
+
+  // Drawers
+  const [selectedOrder, setSelectedOrder] = useState<AdminOrder | null>(null);
+  const [selectedProduct, setSelectedProduct] = useState<AdminProduct | null>(null);
+  const [isProductDrawerOpen, setIsProductDrawerOpen] = useState(false);
+  const [selectedCustomer, setSelectedCustomer] = useState<AdminCustomer | null>(null);
+  const [isCustomerDrawerOpen, setIsCustomerDrawerOpen] = useState(false);
+  const [isEmailComposerOpen, setIsEmailComposerOpen] = useState(false);
+  const [emailTargetCustomer, setEmailTargetCustomer] = useState<AdminCustomer | AdminOrder | null>(null);
+
+  // Filter & Search states
   const [orderSearch, setOrderSearch] = useState('');
-  const [paymentFilter, setPaymentFilter] = useState<'all' | 'pending' | 'paid' | 'failed' | 'refunded'>('all');
-  const [fulfillmentFilter, setFulfillmentFilter] = useState<'all' | FulfillmentStatus>('all');
-  const [selectedOrder, setSelectedOrder] = useState<Order | null>(null);
-  const [orderNotes, setOrderNotes] = useState<Array<{ id: string; adminName: string; note: string; createdAt: string }>>([]);
-  const [newNote, setNewNote] = useState('');
-  const [trackingInput, setTrackingInput] = useState('');
-  const [courierSelect, setCourierSelect] = useState('GIG Logistics');
-  const [savingOrder, setSavingOrder] = useState(false);
-  const [resendingEmail, setResendingEmail] = useState(false);
-  const [showWaybill, setShowWaybill] = useState(false);
-
-  // Inventory state
-  const [stockUpdates, setStockUpdates] = useState<Record<string, number>>({});
-  const [isSavingStock, setIsSavingStock] = useState<string | null>(null);
+  const [orderStatusFilter, setOrderStatusFilter] = useState<FulfillmentStage | 'all'>('all');
   const [productSearch, setProductSearch] = useState('');
+  const [productCategoryFilter, setProductCategoryFilter] = useState('all');
+  const [productViewMode, setProductViewMode] = useState<'table' | 'grid'>('table');
+  const [customerSearch, setCustomerSearch] = useState('');
+  const [customerSegmentFilter, setCustomerSegmentFilter] = useState('all');
 
-  // Products inline edit state
-  const [editingPriceProductId, setEditingPriceProductId] = useState<string | null>(null);
-  const [priceInput, setPriceInput] = useState<string>('');
-  const [salePriceInput, setSalePriceInput] = useState<string>('');
-  const [savingPrice, setSavingPrice] = useState(false);
-
-  // Email Audit Logs state
-  const [emailLogs, setEmailLogs] = useState<EmailLogItem[]>([]);
-  const [loadingEmails, setLoadingEmails] = useState(false);
-  const [testEmailInput, setTestEmailInput] = useState('');
-  const [sendingTestEmail, setSendingTestEmail] = useState(false);
-
-  // Customer Inquiries state
-  const [inquiries, setInquiries] = useState<InquiryItem[]>([]);
-  const [loadingInquiries, setLoadingInquiries] = useState(false);
+  // Inline editing state for product table
+  const [inlineEditingStockId, setInlineEditingStockId] = useState<string | null>(null);
+  const [inlineStockVal, setInlineStockVal] = useState('');
 
   // Toast
   const [toast, setToast] = useState<{ msg: string; type: 'ok' | 'err' } | null>(null);
@@ -89,462 +134,560 @@ export default function AdminDashboardClient({ orders: initialOrders, products: 
     setTimeout(() => setToast(null), 3500);
   };
 
-  // Metrics
-  const totalRevenueKobo = orders.filter(o => o.paymentStatus === 'paid').reduce((sum, o) => sum + o.totalKobo, 0);
-  const pendingShipmentsCount = orders.filter(o => o.paymentStatus === 'paid' && (o.fulfillmentStatus === 'pending' || o.fulfillmentStatus === 'processing')).length;
-  const lowStockVariants = products.flatMap(p => p.variants.filter(v => v.stockQuantity > 0 && v.stockQuantity <= 10));
-  const outOfStockVariants = products.flatMap(p => p.variants.filter(v => v.stockQuantity === 0));
-  const paidOrdersCount = orders.filter(o => o.paymentStatus === 'paid').length;
-  const cancelledOrdersCount = orders.filter(o => o.fulfillmentStatus === 'cancelled').length;
-
-  // Filtered orders
-  const filteredOrders = orders.filter(o => {
-    const q = orderSearch.toLowerCase();
-    const matchSearch = !q || o.orderReference.toLowerCase().includes(q) || o.customerName.toLowerCase().includes(q) || o.customerEmail.toLowerCase().includes(q) || o.customerPhone.includes(q);
-    const matchPayment = paymentFilter === 'all' || o.paymentStatus === paymentFilter;
-    const matchFulfillment = fulfillmentFilter === 'all' || o.fulfillmentStatus === fulfillmentFilter;
-    return matchSearch && matchPayment && matchFulfillment;
-  });
-
-  // Filtered products
-  const filteredProducts = products.filter(p => {
-    const q = productSearch.toLowerCase();
-    return !q || p.name.toLowerCase().includes(q) || p.category.toLowerCase().includes(q) || p.slug.toLowerCase().includes(q);
-  });
-
-  // Load emails when tab selected
+  // Keyboard navigation shortcuts (G then O, G then D, etc.)
   useEffect(() => {
-    if (activeTab === 'emails') {
-      fetchEmailLogs();
-    }
-  }, [activeTab]);
+    let lastKey = '';
+    const handleKey = (e: KeyboardEvent) => {
+      if (['INPUT', 'TEXTAREA'].includes((e.target as HTMLElement)?.tagName)) return;
+      if (e.key === '?') {
+        setShowKeyboardHelp(prev => !prev);
+        return;
+      }
+      if (e.key === 'n' && !e.metaKey && !e.ctrlKey) {
+        setIsProductDrawerOpen(true);
+        setSelectedProduct(null);
+        return;
+      }
+      if (lastKey === 'g') {
+        if (e.key === 'd') setActiveTab('dashboard');
+        if (e.key === 'o') setActiveTab('orders');
+        if (e.key === 'p') setActiveTab('products');
+        if (e.key === 'c') setActiveTab('customers');
+        lastKey = '';
+        return;
+      }
+      if (e.key === 'g') {
+        lastKey = 'g';
+        setTimeout(() => { lastKey = ''; }, 1000);
+      }
+    };
+    window.addEventListener('keydown', handleKey);
+    return () => window.removeEventListener('keydown', handleKey);
+  }, []);
 
-  // Load inquiries when tab selected
+  // Initial Data Load
+  const loadAllData = async () => {
+    setLoading(true);
+    try {
+      const [dash, ords, prods, custs, tpls, rules, due] = await Promise.all([
+        getDashboardMetrics('30d'),
+        getOrders({ limit: 60 }),
+        getProducts(),
+        getCustomers(),
+        getEmailTemplates(),
+        getFollowUpRules(),
+        getDueFollowUps(),
+      ]);
+
+      setKpis(dash.kpis);
+      setHeroRevenueKobo(dash.heroRevenueKobo);
+      setSalesChartData(dash.salesChart);
+      setPipeline(dash.pipeline);
+      setNeedsAttention(dash.needsAttention);
+      setOrders(ords.orders);
+      setProducts(prods);
+      setCustomers(custs);
+      setEmailTemplates(tpls);
+      setFollowUpRules(rules);
+      setDueFollowUps(due);
+    } catch {
+      showToast('Error syncing repository store', 'err');
+    } finally {
+      setLoading(false);
+    }
+  };
+
   useEffect(() => {
-    if (activeTab === 'inquiries') {
-      fetchInquiries();
-    }
-  }, [activeTab]);
+    loadAllData();
+  }, []);
 
-  const fetchEmailLogs = async () => {
-    setLoadingEmails(true);
-    try {
-      const res = await fetch('/api/admin/emails?limit=50');
-      if (res.ok) {
-        const data = await res.json();
-        setEmailLogs(data.logs || []);
-      }
-    } catch {
-      showToast('Failed to load email logs', 'err');
-    } finally {
-      setLoadingEmails(false);
-    }
+  // Handlers for Orders
+  const handleUpdateOrder = async (orderId: string, updates: Partial<AdminOrder>) => {
+    const updated = await updateOrder(orderId, updates);
+    setOrders(prev => prev.map(o => (o.id === updated.id ? updated : o)));
+    if (selectedOrder?.id === updated.id) setSelectedOrder(updated);
+    showToast(`Order #${updated.orderNumber} updated`);
   };
 
-  const fetchInquiries = async () => {
-    setLoadingInquiries(true);
-    try {
-      const res = await fetch('/api/admin/inquiries?limit=50');
-      if (res.ok) {
-        const data = await res.json();
-        setInquiries(data.inquiries || []);
-      }
-    } catch {
-      showToast('Failed to load inquiries', 'err');
-    } finally {
-      setLoadingInquiries(false);
-    }
+  const handleSimulateStep = async (orderId: string) => {
+    const updated = await simulateNextDeliveryStep(orderId);
+    setOrders(prev => prev.map(o => (o.id === updated.id ? updated : o)));
+    if (selectedOrder?.id === updated.id) setSelectedOrder(updated);
+    showToast(`Order #${updated.orderNumber} advanced to ${updated.fulfillmentStatus}`);
   };
 
-  const handleSendTestEmail = async () => {
-    if (!testEmailInput.trim()) return;
-    setSendingTestEmail(true);
-    try {
-      const res = await fetch('/api/admin/emails', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ toEmail: testEmailInput.trim() }),
-      });
-      const data = await res.json();
-      if (res.ok && data.success) {
-        showToast(`Verification test delivered to ${testEmailInput}!`);
-        setTestEmailInput('');
-        fetchEmailLogs();
-      } else {
-        showToast(data.error || 'Failed to dispatch test email', 'err');
-      }
-    } catch {
-      showToast('Network error while dispatching test email', 'err');
-    } finally {
-      setSendingTestEmail(false);
-    }
-  };
-
-  const handleStatusChange = async (orderRef: string, newStatus: FulfillmentStatus, tracking?: string) => {
-    try {
-      const res = await fetch('/api/admin/orders/status', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          orderReference: orderRef,
-          fulfillmentStatus: newStatus,
-          trackingReference: tracking !== undefined ? tracking : selectedOrder?.trackingReference || undefined
-        }),
-      });
-      if (res.ok) {
-        const data = await res.json();
-        setOrders(prev => prev.map(o => (o.orderReference === orderRef ? {
-          ...o,
-          fulfillmentStatus: newStatus,
-          trackingReference: tracking !== undefined ? tracking : o.trackingReference
-        } : o)));
-        if (selectedOrder?.orderReference === orderRef) {
-          setSelectedOrder(prev => prev ? {
-            ...prev,
-            fulfillmentStatus: newStatus,
-            trackingReference: tracking !== undefined ? tracking : prev.trackingReference
-          } : null);
-        }
-        if (newStatus === 'shipped') {
-          showToast(`Order marked shipped · ${data.emailSent ? 'Dispatched waybill email to customer!' : 'Waybill recorded.'}`);
-        } else {
-          showToast(`Status updated to ${newStatus}`);
-        }
-      } else {
-        const d = await res.json();
-        showToast(d.error || 'Failed to update status', 'err');
-      }
-    } catch {
-      showToast('Network error', 'err');
-    }
-  };
-
-  const handleSaveTrackingAndDispatch = async () => {
-    if (!selectedOrder) return;
-    const finalTracking = trackingInput.trim() ? `${courierSelect}: ${trackingInput.trim()}` : '';
-    setSavingOrder(true);
-    try {
-      await handleStatusChange(selectedOrder.orderReference, 'shipped', finalTracking);
-    } finally {
-      setSavingOrder(false);
-    }
-  };
-
-  const handleResendOrderEmail = async (type: 'confirmation' | 'shipped') => {
-    if (!selectedOrder) return;
-    setResendingEmail(true);
-    try {
-      const res = await fetch('/api/admin/orders/resend-email', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          orderReference: selectedOrder.orderReference,
-          type
-        }),
-      });
-      const data = await res.json();
-      if (res.ok && data.success) {
-        showToast(`${type === 'confirmation' ? 'Order Receipt' : 'Shipping Waybill'} resent to ${data.recipient}!`);
-      } else {
-        showToast(data.error || 'Failed to resend email', 'err');
-      }
-    } catch {
-      showToast('Network error', 'err');
-    } finally {
-      setResendingEmail(false);
-    }
-  };
-
-  const handleAddNote = async () => {
-    if (!selectedOrder || !newNote.trim()) return;
-    setSavingOrder(true);
-    try {
-      const res = await fetch(`/api/admin/orders/${selectedOrder.orderReference}`, {
-        method: 'PATCH',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ addNote: newNote.trim() }),
-      });
-      if (res.ok) {
-        const data = await res.json();
-        setOrderNotes(data.notes || []);
-        setNewNote('');
-        showToast('Note added');
-      } else {
-        showToast('Failed to add note', 'err');
-      }
-    } finally {
-      setSavingOrder(false);
-    }
-  };
-
-  const openOrderModal = async (order: Order) => {
-    setSelectedOrder(order);
-    setTrackingInput(order.trackingReference || '');
-    setOrderNotes([]);
-    setShowWaybill(false);
-    try {
-      const res = await fetch(`/api/admin/orders/${order.orderReference}`);
-      if (res.ok) {
-        const data = await res.json();
-        setOrderNotes(data.notes || []);
-      }
-    } catch { /* non-critical */ }
-  };
-
-  const handleStockUpdate = async (variantId: string) => {
-    const newStock = stockUpdates[variantId];
-    if (typeof newStock !== 'number') return;
-    setIsSavingStock(variantId);
-    try {
-      const res = await fetch('/api/admin/products/stock', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ variantId, newStock }),
-      });
-      if (res.ok) {
-        setProducts(prev => prev.map(p => ({ ...p, variants: p.variants.map(v => (v.id === variantId ? { ...v, stockQuantity: newStock } : v)) })));
-        showToast(`Stock updated to ${newStock}`);
-      } else {
-        const d = await res.json();
-        showToast(d.error || 'Failed to update stock', 'err');
-      }
-    } finally {
-      setIsSavingStock(null);
-    }
-  };
-
-  const handleTogglePublish = async (product: Product) => {
-    const res = await fetch(`/api/admin/products/${product.id}`, {
-      method: 'PATCH',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ isPublished: !product.isPublished }),
-    });
-    if (res.ok) {
-      const data = await res.json();
-      setProducts(prev => prev.map(p => (p.id === product.id ? data.product : p)));
-      showToast(`Product ${!product.isPublished ? 'published' : 'unpublished'}`);
+  // Handlers for Products
+  const handleSaveProduct = async (productData: any) => {
+    if (selectedProduct) {
+      const updated = await updateProduct(selectedProduct.id, productData);
+      setProducts(prev => prev.map(p => (p.id === updated.id ? updated : p)));
+      showToast(`Product ${updated.title} updated`);
     } else {
-      showToast('Failed to update product', 'err');
+      const created = await addProduct(productData);
+      setProducts(prev => [created, ...prev]);
+      showToast(`Product ${created.title} created`);
     }
+    setIsProductDrawerOpen(false);
   };
 
-  const startEditPrice = (product: Product) => {
-    setEditingPriceProductId(product.id);
-    setPriceInput(String(product.priceKobo / 100));
-    setSalePriceInput(product.salePriceKobo ? String(product.salePriceKobo / 100) : '');
+  const handleDeleteProduct = async (productId: string) => {
+    const prod = products.find(p => p.id === productId);
+    await deleteProduct(productId);
+    setProducts(prev => prev.filter(p => p.id !== productId));
+    showToast(`Deleted ${prod?.title || 'product'}`);
   };
 
-  const saveProductPrice = async (product: Product) => {
-    setSavingPrice(true);
-    const priceKobo = Math.round(parseFloat(priceInput || '0') * 100);
-    const salePriceKobo = salePriceInput.trim() ? Math.round(parseFloat(salePriceInput) * 100) : null;
-
-    if (!priceKobo || priceKobo <= 0) {
-      showToast('Valid price required', 'err');
-      setSavingPrice(false);
-      return;
+  const handleSaveInlineStock = async (prodId: string) => {
+    const newStock = parseInt(inlineStockVal, 10);
+    if (!isNaN(newStock) && newStock >= 0) {
+      const updated = await updateProduct(prodId, { stock: newStock });
+      setProducts(prev => prev.map(p => (p.id === updated.id ? updated : p)));
+      showToast(`Stock updated to ${newStock}`);
     }
-
-    try {
-      const res = await fetch(`/api/admin/products/${product.id}`, {
-        method: 'PATCH',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ priceKobo, salePriceKobo }),
-      });
-      if (res.ok) {
-        const data = await res.json();
-        setProducts(prev => prev.map(p => (p.id === product.id ? data.product : p)));
-        setEditingPriceProductId(null);
-        showToast(`Price updated for ${product.name}`);
-      } else {
-        showToast('Failed to update product price', 'err');
-      }
-    } finally {
-      setSavingPrice(false);
-    }
+    setInlineEditingStockId(null);
   };
 
+  // Handlers for Follow-up Rules
+  const handleToggleRule = async (ruleId: string) => {
+    const updated = await toggleFollowUpRule(ruleId);
+    setFollowUpRules(prev => prev.map(r => (r.id === updated.id ? updated : r)));
+    showToast(`Rule ${updated.isEnabled ? 'activated' : 'deactivated'}`);
+  };
+
+  const handleDismissDueFollowUp = async (id: string) => {
+    await dismissDueFollowUp(id);
+    setDueFollowUps(prev => prev.filter(d => d.id !== id));
+    showToast('Follow-up dismissed');
+  };
+
+  // Logout
   const handleLogout = async () => {
     await fetch('/api/admin/logout', { method: 'POST' });
     router.push('/admin/login');
-    router.refresh();
   };
 
-  // Helper to format Nigerian phone numbers for WhatsApp
-  const formatWhatsAppUrl = (phone: string, customerName: string, orderRef: string) => {
-    let clean = phone.replace(/[^0-9]/g, '');
-    if (clean.startsWith('0')) {
-      clean = '234' + clean.slice(1);
-    } else if (clean.length === 10) {
-      clean = '234' + clean;
-    }
-    const text = encodeURIComponent(`Salam ${customerName}! This is Deen Drip regarding your order #${orderRef}.`);
-    return `https://wa.me/${clean}?text=${text}`;
-  };
+  // Filtered Orders
+  const filteredOrders = orders.filter(o => {
+    const q = orderSearch.toLowerCase();
+    const matchQ = !q || o.orderNumber.includes(q) || o.customerName.toLowerCase().includes(q) || o.customerEmail.toLowerCase().includes(q);
+    const matchStatus = orderStatusFilter === 'all' || o.fulfillmentStatus === orderStatusFilter;
+    return matchQ && matchStatus;
+  });
 
-  const renderPaymentBadge = (status: PaymentStatus) => {
-    switch (status) {
-      case 'paid':
-        return <span className={`${styles.statusPill} ${styles.pillPaid}`}><span className={styles.statusDot} />Paid</span>;
-      case 'pending':
-        return <span className={`${styles.statusPill} ${styles.pillPending}`}><span className={styles.statusDot} />Pending</span>;
-      case 'failed':
-        return <span className={`${styles.statusPill} ${styles.pillFailed}`}><span className={styles.statusDot} />Failed</span>;
-      default:
-        return <span className={`${styles.statusPill} ${styles.pillCancelled}`}><span className={styles.statusDot} />{status}</span>;
-    }
-  };
+  // Filtered Products
+  const filteredProducts = products.filter(p => {
+    const q = productSearch.toLowerCase();
+    const matchQ = !q || p.title.toLowerCase().includes(q) || p.sku.toLowerCase().includes(q);
+    const matchCat = productCategoryFilter === 'all' || p.category === productCategoryFilter;
+    return matchQ && matchCat;
+  });
 
-  const renderFulfillmentBadge = (status: FulfillmentStatus) => {
-    switch (status) {
-      case 'delivered':
-        return <span className={`${styles.statusPill} ${styles.pillDelivered}`}><span className={styles.statusDot} />Delivered</span>;
-      case 'shipped':
-        return <span className={`${styles.statusPill} ${styles.pillShipped}`}><span className={styles.statusDot} />Shipped</span>;
-      case 'processing':
-        return <span className={`${styles.statusPill} ${styles.pillPending}`}><span className={styles.statusDot} />Processing</span>;
-      case 'cancelled':
-        return <span className={`${styles.statusPill} ${styles.pillCancelled}`}><span className={styles.statusDot} />Cancelled</span>;
-      default:
-        return <span className={`${styles.statusPill} ${styles.pillPending}`}><span className={styles.statusDot} />Pending</span>;
-    }
-  };
+  // Filtered Customers
+  const filteredCustomers = customers.filter(c => {
+    const q = customerSearch.toLowerCase();
+    const matchQ = !q || c.name.toLowerCase().includes(q) || c.email.toLowerCase().includes(q) || c.phone.includes(q);
+    const matchSeg = customerSegmentFilter === 'all' || c.segment === customerSegmentFilter;
+    return matchQ && matchSeg;
+  });
 
-  const tabs: { id: TabId; label: string; count?: number }[] = [
-    { id: 'overview', label: 'Overview' },
-    { id: 'orders', label: 'Orders', count: orders.length },
-    { id: 'products', label: 'Products', count: products.length },
-    { id: 'inventory', label: 'Inventory' },
-    { id: 'emails', label: 'Email Logs' },
-    { id: 'inquiries', label: 'Inquiries' },
-    { id: 'delivery', label: 'Delivery' },
-    { id: 'settings', label: 'Settings' },
-  ];
+  const formatNgn = (kobo: number) => `₦${(kobo / 100).toLocaleString('en-NG')}`;
 
   return (
-    <div className={styles.container}>
-      <div className="container">
-        {/* Toast */}
-        {toast && (
-          <div style={{
-            position: 'fixed', top: '1rem', right: '1rem', zIndex: 9999,
-            padding: '0.85rem 1.4rem',
-            backgroundColor: toast.type === 'ok' ? '#10b981' : '#ef4444',
-            color: '#fff', borderRadius: 'var(--radius-xs)', fontSize: '0.88rem', fontWeight: 700,
-            boxShadow: '0 10px 25px rgba(0,0,0,0.3)', maxWidth: '360px',
-            display: 'flex', alignItems: 'center', gap: '0.5rem',
-          }}>
-            <span>{toast.type === 'ok' ? '✓' : '⚠'}</span>
-            <span>{toast.msg}</span>
-          </div>
-        )}
+    <div className={styles.adminRoot}>
+      {/* Toast */}
+      {toast && (
+        <div style={{
+          position: 'fixed', top: '16px', right: '16px', zIndex: 9999,
+          padding: '10px 16px', borderRadius: '10px',
+          backgroundColor: toast.type === 'ok' ? '#0A0A0A' : '#EF4444',
+          color: '#FFFFFF', fontSize: '13px', fontWeight: 600,
+          border: '1px solid #27272A', boxShadow: '0 10px 25px rgba(0,0,0,0.2)',
+          display: 'flex', alignItems: 'center', gap: '8px'
+        }}>
+          <span>{toast.type === 'ok' ? '✓' : '⚠'}</span>
+          <span>{toast.msg}</span>
+        </div>
+      )}
 
-        {/* Header */}
-        <div className={styles.topBar}>
-          <div>
-            <div style={{ display: 'inline-flex', alignItems: 'center', gap: '0.5rem', marginBottom: '0.25rem' }}>
-              <span className="section-tag" style={{ margin: 0 }}>[ STAFF ADMIN CONSOLE ]</span>
-              <span style={{ fontSize: '0.72rem', background: 'rgba(56, 189, 248, 0.15)', color: '#38bdf8', padding: '0.15rem 0.5rem', borderRadius: '4px', fontWeight: 800 }}>
-                TURSO CLOUD SYNCED
-              </span>
-            </div>
-            <h1 className={styles.title}>Deen Drip Operations</h1>
-            <span style={{ fontSize: '0.8rem', color: 'var(--text-muted)' }}>
-              Logged in as <strong>{adminName}</strong> ({adminRole})
-            </span>
-          </div>
-          <div style={{ display: 'flex', gap: 'var(--space-3)', flexWrap: 'wrap' }}>
-            <button onClick={() => router.push('/')} className="btn btn-outline btn-sm">View Storefront ↗</button>
-            <button onClick={handleLogout} className="btn btn-primary btn-sm">Sign Out</button>
-          </div>
+      {/* ── DESKTOP SIDEBAR (240px) ── */}
+      <aside className={`${styles.sidebar} ${sidebarCollapsed ? styles.sidebarCollapsed : ''}`}>
+        <div className={styles.sidebarHeader}>
+          <a href="/admin" className={styles.brandWrap}>
+            <div className={styles.brandIcon}>DD</div>
+            {!sidebarCollapsed && (
+              <div>
+                <div style={{ fontSize: '14px', fontWeight: 800, letterSpacing: '0.04em' }}>DEEN DRIP</div>
+                <div style={{ fontSize: '11px', color: 'var(--admin-muted)' }}>Admin Operations</div>
+              </div>
+            )}
+          </a>
         </div>
 
-        {/* Tab Navigation */}
-        <div className={styles.tabNav}>
-          {tabs.map(tab => (
+        <nav className={styles.navSection}>
+          <button
+            onClick={() => setActiveTab('dashboard')}
+            className={`${styles.navItem} ${activeTab === 'dashboard' ? styles.navItemActive : ''}`}
+          >
+            <LayoutDashboard size={18} />
+            {!sidebarCollapsed && <span>Dashboard</span>}
+          </button>
+
+          <button
+            onClick={() => setActiveTab('orders')}
+            className={`${styles.navItem} ${activeTab === 'orders' ? styles.navItemActive : ''}`}
+          >
+            <ShoppingBag size={18} />
+            {!sidebarCollapsed && <span>Orders</span>}
+            {!sidebarCollapsed && pipeline.new > 0 && <span className={styles.navBadge}>{pipeline.new}</span>}
+          </button>
+
+          <button
+            onClick={() => setActiveTab('products')}
+            className={`${styles.navItem} ${activeTab === 'products' ? styles.navItemActive : ''}`}
+          >
+            <Package size={18} />
+            {!sidebarCollapsed && <span>Products</span>}
+          </button>
+
+          <button
+            onClick={() => setActiveTab('customers')}
+            className={`${styles.navItem} ${activeTab === 'customers' ? styles.navItemActive : ''}`}
+          >
+            <Users size={18} />
+            {!sidebarCollapsed && <span>Customers</span>}
+          </button>
+
+          <button
+            onClick={() => setActiveTab('email')}
+            className={`${styles.navItem} ${activeTab === 'email' ? styles.navItemActive : ''}`}
+          >
+            <Mail size={18} />
+            {!sidebarCollapsed && <span>Email & Follow-ups</span>}
+            {!sidebarCollapsed && dueFollowUps.length > 0 && <span className={styles.navBadge}>{dueFollowUps.length}</span>}
+          </button>
+
+          <button
+            onClick={() => setActiveTab('analytics')}
+            className={`${styles.navItem} ${activeTab === 'analytics' ? styles.navItemActive : ''}`}
+          >
+            <BarChart3 size={18} />
+            {!sidebarCollapsed && <span>Analytics</span>}
+          </button>
+
+          <button
+            onClick={() => setActiveTab('settings')}
+            className={`${styles.navItem} ${activeTab === 'settings' ? styles.navItemActive : ''}`}
+          >
+            <Settings size={18} />
+            {!sidebarCollapsed && <span>Settings</span>}
+          </button>
+        </nav>
+
+        <div className={styles.sidebarFooter}>
+          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
             <button
-              key={tab.id}
-              onClick={() => setActiveTab(tab.id)}
-              className={`${styles.tabBtn} ${activeTab === tab.id ? styles.tabBtnActive : ''}`}
+              onClick={() => toggleTheme()}
+              className={styles.btnSecondary}
+              style={{ padding: '6px 10px', height: '32px', fontSize: '12px' }}
+              title="Toggle Light / Dark mode"
             >
-              <span>{tab.label}</span>
-              {tab.count !== undefined && <span className={styles.tabBadge}>{tab.count}</span>}
+              {theme === 'dark' ? <Sun size={14} /> : <Moon size={14} />}
+              {!sidebarCollapsed && <span>{theme === 'dark' ? 'Light' : 'Dark'}</span>}
             </button>
-          ))}
-        </div>
+            <button
+              onClick={() => setShowKeyboardHelp(true)}
+              className={styles.btnSecondary}
+              style={{ padding: '6px 8px', height: '32px' }}
+              title="Keyboard Shortcuts (?)"
+            >
+              <HelpCircle size={14} />
+            </button>
+          </div>
 
-        {/* ── OVERVIEW TAB ── */}
-        {activeTab === 'overview' && (
-          <div>
-            <div className={styles.metricsGrid}>
-              <div className={styles.metricCard}>
-                <span className={styles.metricLabel}>Verified Gross Revenue</span>
-                <span className={styles.metricVal} style={{ color: 'var(--accent-primary)' }}>{formatNaira(totalRevenueKobo)}</span>
-                <span style={{ fontSize: '0.72rem', color: 'var(--text-muted)', marginTop: '0.35rem' }}>Gross from {paidOrdersCount} confirmed paid orders</span>
-              </div>
-              <div className={styles.metricCard}>
-                <span className={styles.metricLabel}>Total Orders</span>
-                <span className={styles.metricVal}>{orders.length}</span>
-                <span style={{ fontSize: '0.72rem', color: 'var(--text-muted)', marginTop: '0.35rem' }}>{paidOrdersCount} paid · {cancelledOrdersCount} cancelled</span>
-              </div>
-              <div className={styles.metricCard}>
-                <span className={styles.metricLabel}>Awaiting Dispatch</span>
-                <span className={styles.metricVal} style={{ color: pendingShipmentsCount > 0 ? '#f59e0b' : 'inherit' }}>{pendingShipmentsCount}</span>
-                <span style={{ fontSize: '0.72rem', color: 'var(--text-muted)', marginTop: '0.35rem' }}>Paid orders requiring courier dispatch</span>
-              </div>
-              <div className={styles.metricCard}>
-                <span className={styles.metricLabel}>Stock Status</span>
-                <span className={styles.metricVal} style={{ color: (lowStockVariants.length + outOfStockVariants.length) > 0 ? '#ef4444' : '#10b981' }}>
-                  {lowStockVariants.length + outOfStockVariants.length}
-                </span>
-                <span style={{ fontSize: '0.72rem', color: 'var(--text-muted)', marginTop: '0.35rem' }}>
-                  {outOfStockVariants.length} out of stock · {lowStockVariants.length} low (≤10)
-                </span>
-              </div>
-            </div>
-
-            {/* Recent Orders */}
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 'var(--space-4)' }}>
-              <h2 style={{ fontSize: '1rem', fontWeight: 800, textTransform: 'uppercase', letterSpacing: '0.05em' }}>
-                Recent Store Orders
-              </h2>
-              <button onClick={() => setActiveTab('orders')} className="btn btn-outline btn-sm" style={{ fontSize: '0.75rem' }}>
-                View All ({orders.length}) →
+          {!sidebarCollapsed && (
+            <div style={{ fontSize: '11px', color: 'var(--admin-muted)', display: 'flex', justifyContent: 'space-between', alignItems: 'center', paddingTop: '4px' }}>
+              <span>{adminName}</span>
+              <button onClick={handleLogout} style={{ background: 'none', border: 'none', color: '#EF4444', cursor: 'pointer', fontSize: '11px', fontWeight: 600 }}>
+                Sign out
               </button>
             </div>
+          )}
+        </div>
+      </aside>
 
-            {orders.length === 0 ? (
-              <div style={{ padding: 'var(--space-12)', textAlign: 'center', color: 'var(--text-muted)', border: '1px dashed var(--border-light)', borderRadius: 'var(--radius-xs)' }}>
-                No customer orders placed yet. Orders will appear here the instant customers checkout.
+      {/* ── MAIN CONTENT ── */}
+      <div className={styles.mainContent}>
+        {/* Top Bar */}
+        <header className={styles.topBar}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+            {/* Command Palette Trigger */}
+            <div
+              className={styles.searchTrigger}
+              onClick={() => setCommandPaletteOpen(true)}
+              role="button"
+              tabIndex={0}
+            >
+              <Search size={14} />
+              <span>Search or type command…</span>
+              <kbd className={styles.kbd}>⌘K</kbd>
+            </div>
+          </div>
+
+          <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+            <a
+              href="/"
+              target="_blank"
+              rel="noopener noreferrer"
+              className={styles.btnSecondary}
+              style={{ padding: '6px 12px', height: '34px', fontSize: '12px' }}
+            >
+              <span>Storefront</span>
+              <ExternalLink size={12} />
+            </a>
+            <button
+              onClick={() => { setIsProductDrawerOpen(true); setSelectedProduct(null); }}
+              className={styles.btnPrimary}
+              style={{ padding: '6px 14px', height: '34px', fontSize: '12px' }}
+            >
+              <Plus size={14} />
+              <span>New Product</span>
+            </button>
+          </div>
+        </header>
+
+        {/* Page Content Body */}
+        <main className={styles.pageBody}>
+          {/* ══════════════════════════════════════════════════════════════
+              MODULE 1: DASHBOARD HOME (Max 6 calm blocks)
+             ══════════════════════════════════════════════════════════════ */}
+          {activeTab === 'dashboard' && (
+            <div>
+              {/* Block 1: Revenue Hero Card */}
+              <div className={styles.cardHero} style={{ marginBottom: '20px' }}>
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
+                  <div>
+                    <span style={{ fontSize: '12px', fontWeight: 600, color: '#A1A1AA', letterSpacing: '0.05em', textTransform: 'uppercase' }}>
+                      Verified Gross Revenue
+                    </span>
+                    <div className={styles.tabular} style={{ fontSize: '34px', fontWeight: 800, letterSpacing: '-0.03em', marginTop: '4px' }}>
+                      {formatNgn(heroRevenueKobo)}
+                    </div>
+                  </div>
+                  <span style={{ fontSize: '12px', color: '#38BDF8', background: 'rgba(56, 189, 248, 0.15)', padding: '4px 10px', borderRadius: '9999px', fontWeight: 700 }}>
+                    +14.2% vs last 30d
+                  </span>
+                </div>
+                <div style={{ display: 'flex', gap: '20px', marginTop: '16px', fontSize: '12px', color: '#A1A1AA' }}>
+                  <span>Currency: <strong>NGN (₦)</strong></span>
+                  <span>Store: <strong>Deen Drip Lagos</strong></span>
+                  <span>Status: <strong style={{ color: '#10B981' }}>Live</strong></span>
+                </div>
               </div>
-            ) : (
-              <div className={styles.tableCard}>
+
+              {/* Block 2: KPI Row (4 cards) */}
+              <div className={styles.kpiGrid}>
+                {kpis.map((kpi) => (
+                  <div key={kpi.title} className={styles.kpiCard}>
+                    <span className={styles.kpiTitle}>{kpi.title}</span>
+                    <span className={`${styles.kpiValue} ${styles.tabular}`}>{kpi.value}</span>
+                    <span className={`${styles.kpiDelta} ${kpi.trend === 'up' ? styles.kpiDeltaUp : styles.kpiDeltaDown}`}>
+                      {kpi.trend === 'up' ? <ArrowUpRight size={14} /> : <ArrowDownRight size={14} />}
+                      <span>+{kpi.deltaPercent}%</span>
+                      <span style={{ color: 'var(--admin-muted)', fontWeight: 400, marginLeft: '4px' }}>{kpi.description}</span>
+                    </span>
+                  </div>
+                ))}
+              </div>
+
+              {/* Block 3: Order Pipeline Ribbon (Clickable stages) */}
+              <div className={styles.pipelineRow}>
+                {[
+                  { stage: 'new' as const, label: 'New Orders', count: pipeline.new, desc: 'Awaiting packing' },
+                  { stage: 'packing' as const, label: 'Packing', count: pipeline.packing, desc: 'In inspection hub' },
+                  { stage: 'shipped' as const, label: 'Shipped', count: pipeline.shipped, desc: 'In transit with courier' },
+                  { stage: 'delivered' as const, label: 'Delivered', count: pipeline.delivered, desc: 'Completed orders' },
+                ].map((item) => (
+                  <div
+                    key={item.stage}
+                    onClick={() => {
+                      setOrderStatusFilter(item.stage);
+                      setActiveTab('orders');
+                    }}
+                    className={styles.pipelineStage}
+                  >
+                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline' }}>
+                      <span style={{ fontSize: '12px', fontWeight: 600, color: 'var(--admin-muted)', textTransform: 'uppercase' }}>
+                        {item.label}
+                      </span>
+                      <span className={`${styles.tabular}`} style={{ fontSize: '18px', fontWeight: 800, color: 'var(--admin-text)' }}>
+                        {item.count}
+                      </span>
+                    </div>
+                    <span style={{ fontSize: '11px', color: 'var(--admin-muted)', marginTop: '4px' }}>{item.desc} →</span>
+                  </div>
+                ))}
+              </div>
+
+              {/* Block 4: Sales Chart with Toggle & Table Alternative */}
+              <SalesChart data={salesChartData} />
+
+              {/* Two Column Grid for Block 5 & Block 6 */}
+              <div style={{ display: 'grid', gridTemplateColumns: '1.2fr 0.8fr', gap: '20px' }}>
+                {/* Block 5: Recent 5 Orders */}
+                <div className={styles.card}>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '14px' }}>
+                    <h3 style={{ margin: 0, fontSize: '14px', fontWeight: 700 }}>Recent Orders</h3>
+                    <button onClick={() => setActiveTab('orders')} className={styles.btnSecondary} style={{ padding: '4px 8px', fontSize: '11px', height: '26px' }}>
+                      View all ({orders.length}) →
+                    </button>
+                  </div>
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+                    {orders.slice(0, 5).map((o) => (
+                      <div
+                        key={o.id}
+                        onClick={() => setSelectedOrder(o)}
+                        style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '10px 12px', borderRadius: '8px', border: '1px solid var(--admin-border-subtle)', cursor: 'pointer', transition: 'background 150ms' }}
+                      >
+                        <div>
+                          <div style={{ fontSize: '13px', fontWeight: 700 }}>#{o.orderNumber} — {o.customerName}</div>
+                          <div style={{ fontSize: '11px', color: 'var(--admin-muted)' }}>{o.items.length} items · {o.deliveryCity}</div>
+                        </div>
+                        <div style={{ textAlign: 'right' }}>
+                          <div className={styles.tabular} style={{ fontSize: '13px', fontWeight: 700 }}>{formatNgn(o.totalKobo)}</div>
+                          <span className={`${styles.badge} ${o.fulfillmentStatus === 'shipped' ? styles.badgeShipped : styles.badgePaid}`} style={{ fontSize: '10px', padding: '2px 6px' }}>
+                            {o.fulfillmentStatus}
+                          </span>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+
+                {/* Block 6: Needs Attention List (max 4 items) */}
+                <div className={styles.card}>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '14px' }}>
+                    <h3 style={{ margin: 0, fontSize: '14px', fontWeight: 700, color: 'var(--admin-text)' }}>Needs Attention</h3>
+                    <span style={{ fontSize: '11px', color: 'var(--admin-muted)' }}>{needsAttention.length} urgent</span>
+                  </div>
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
+                    {needsAttention.map((item) => (
+                      <div key={item.id} style={{ padding: '12px', borderRadius: '10px', background: 'var(--admin-canvas)', border: '1px solid var(--admin-border)' }}>
+                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
+                          <div>
+                            <div style={{ fontSize: '13px', fontWeight: 600 }}>{item.title}</div>
+                            <div style={{ fontSize: '11px', color: 'var(--admin-muted)', marginTop: '2px' }}>{item.subtitle}</div>
+                          </div>
+                          <button
+                            onClick={() => {
+                              if (item.linkTab === 'products') setActiveTab('products');
+                              if (item.linkTab === 'orders') setActiveTab('orders');
+                              if (item.linkTab === 'email') setActiveTab('email');
+                            }}
+                            className={styles.btnSecondary}
+                            style={{ padding: '4px 8px', fontSize: '11px', height: '26px' }}
+                          >
+                            {item.actionText}
+                          </button>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              </div>
+            </div>
+          )}
+
+          {/* ══════════════════════════════════════════════════════════════
+              MODULE 2: ORDERS TABLE & MANAGEMENT
+             ══════════════════════════════════════════════════════════════ */}
+          {activeTab === 'orders' && (
+            <div>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '18px', flexWrap: 'wrap', gap: '12px' }}>
+                <div>
+                  <h2 style={{ margin: 0, fontSize: '20px', fontWeight: 800, letterSpacing: '-0.02em' }}>Orders</h2>
+                  <span style={{ fontSize: '13px', color: 'var(--admin-muted)' }}>Manage fulfillment and courier dispatches</span>
+                </div>
+              </div>
+
+              {/* Filter Row */}
+              <div style={{ display: 'flex', gap: '10px', marginBottom: '16px', flexWrap: 'wrap', alignItems: 'center' }}>
+                <input
+                  type="search"
+                  placeholder="Filter by order #, customer, email, phone…"
+                  value={orderSearch}
+                  onChange={(e) => setOrderSearch(e.target.value)}
+                  style={{ padding: '8px 12px', fontSize: '13px', borderRadius: '8px', border: '1px solid var(--admin-border)', backgroundColor: 'var(--admin-surface)', color: 'var(--admin-text)', width: '280px' }}
+                />
+
+                <div style={{ display: 'flex', gap: '4px', overflowX: 'auto' }}>
+                  {(['all', 'new', 'packing', 'shipped', 'delivered', 'cancelled'] as const).map((st) => (
+                    <button
+                      key={st}
+                      onClick={() => setOrderStatusFilter(st)}
+                      style={{
+                        padding: '6px 12px',
+                        fontSize: '12px',
+                        fontWeight: orderStatusFilter === st ? 600 : 500,
+                        borderRadius: '9999px',
+                        border: '1px solid var(--admin-border)',
+                        background: orderStatusFilter === st ? 'var(--admin-ink)' : 'var(--admin-surface)',
+                        color: orderStatusFilter === st ? '#fff' : 'var(--admin-muted)',
+                        cursor: 'pointer',
+                        textTransform: 'capitalize',
+                      }}
+                    >
+                      {st}
+                    </button>
+                  ))}
+                </div>
+              </div>
+
+              {/* Orders Table */}
+              <div className={styles.tableContainer}>
                 <table className={styles.table}>
                   <thead>
                     <tr>
-                      <th>Order Ref</th>
-                      <th>Placed At</th>
+                      <th>Order</th>
+                      <th>Date</th>
                       <th>Customer</th>
-                      <th>Total Amount</th>
+                      <th>Location</th>
+                      <th>Items</th>
+                      <th>Total</th>
                       <th>Payment</th>
                       <th>Fulfillment</th>
                       <th>Action</th>
                     </tr>
                   </thead>
                   <tbody>
-                    {orders.slice(0, 8).map(order => (
-                      <tr key={order.id}>
-                        <td><strong>{order.orderReference}</strong></td>
-                        <td style={{ whiteSpace: 'nowrap', color: 'var(--text-muted)', fontSize: '0.8rem' }}>{formatDate(order.createdAt)}</td>
-                        <td>
-                          <div style={{ fontWeight: 700 }}>{order.customerName}</div>
-                          <div style={{ fontSize: '0.72rem', color: 'var(--text-muted)' }}>{order.customerEmail}</div>
+                    {filteredOrders.map((o) => (
+                      <tr key={o.id} className={styles.tableRow} onClick={() => setSelectedOrder(o)} style={{ cursor: 'pointer' }}>
+                        <td><strong>#{o.orderNumber}</strong></td>
+                        <td style={{ color: 'var(--admin-muted)', fontSize: '12px' }}>
+                          {new Date(o.createdAt).toLocaleDateString()}
                         </td>
-                        <td><strong style={{ color: 'var(--accent-primary)' }}>{formatNaira(order.totalKobo)}</strong></td>
-                        <td>{renderPaymentBadge(order.paymentStatus)}</td>
-                        <td>{renderFulfillmentBadge(order.fulfillmentStatus)}</td>
                         <td>
-                          <button onClick={() => openOrderModal(order)} className="btn btn-outline btn-sm" style={{ padding: '0.25rem 0.65rem', fontSize: '0.75rem' }}>
+                          <div><strong>{o.customerName}</strong></div>
+                          <div style={{ fontSize: '11px', color: 'var(--admin-muted)' }}>{o.customerEmail}</div>
+                        </td>
+                        <td>{o.deliveryCity}, {o.deliveryState}</td>
+                        <td>{o.items.length}</td>
+                        <td className={styles.tabular} style={{ fontWeight: 700 }}>{formatNgn(o.totalKobo)}</td>
+                        <td>
+                          <span className={`${styles.badge} ${o.paymentStatus === 'paid' ? styles.badgePaid : styles.badgePending}`}>
+                            {o.paymentStatus}
+                          </span>
+                        </td>
+                        <td>
+                          <span className={`${styles.badge} ${o.fulfillmentStatus === 'shipped' ? styles.badgeShipped : styles.badgePending}`}>
+                            {o.fulfillmentStatus}
+                          </span>
+                        </td>
+                        <td>
+                          <button
+                            onClick={(e) => { e.stopPropagation(); setSelectedOrder(o); }}
+                            className={styles.btnSecondary}
+                            style={{ padding: '4px 10px', height: '28px', fontSize: '11px' }}
+                          >
                             Inspect
                           </button>
                         </td>
@@ -553,943 +696,619 @@ export default function AdminDashboardClient({ orders: initialOrders, products: 
                   </tbody>
                 </table>
               </div>
-            )}
-          </div>
-        )}
-
-        {/* ── ORDERS TAB ── */}
-        {activeTab === 'orders' && (
-          <div>
-            {/* Filters */}
-            <div style={{ display: 'flex', gap: 'var(--space-3)', marginBottom: 'var(--space-5)', flexWrap: 'wrap', alignItems: 'center' }}>
-              <input
-                type="search"
-                placeholder="Search reference, customer, email, phone…"
-                value={orderSearch}
-                onChange={e => setOrderSearch(e.target.value)}
-                style={{ padding: '0.55rem 0.95rem', fontSize: '0.85rem', borderRadius: 'var(--radius-xs)', border: '1px solid var(--border-light)', width: '300px', backgroundColor: 'var(--bg-card)', color: 'var(--text-primary)' }}
-              />
-              <select value={paymentFilter} onChange={e => setPaymentFilter(e.target.value as any)} className={styles.statusSelect}>
-                <option value="all">All Payment Statuses</option>
-                <option value="paid">Paid</option>
-                <option value="pending">Pending</option>
-                <option value="failed">Failed</option>
-                <option value="refunded">Refunded</option>
-              </select>
-              <select value={fulfillmentFilter} onChange={e => setFulfillmentFilter(e.target.value as any)} className={styles.statusSelect}>
-                <option value="all">All Fulfillment Statuses</option>
-                {FULFILLMENT_STATUSES.map(s => <option key={s} value={s}>{s}</option>)}
-              </select>
-              <span style={{ fontSize: '0.8rem', color: 'var(--text-muted)' }}>
-                Showing <strong>{filteredOrders.length}</strong> of <strong>{orders.length}</strong> orders
-              </span>
             </div>
+          )}
 
-            {filteredOrders.length === 0 ? (
-              <div style={{ padding: 'var(--space-12)', textAlign: 'center', color: 'var(--text-muted)', border: '1px dashed var(--border-light)', borderRadius: 'var(--radius-xs)' }}>
-                No orders match your filter criteria.
+          {/* ══════════════════════════════════════════════════════════════
+              MODULE 3: PRODUCTS (Table/Grid + Inline Edit)
+             ══════════════════════════════════════════════════════════════ */}
+          {activeTab === 'products' && (
+            <div>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '18px', flexWrap: 'wrap', gap: '12px' }}>
+                <div>
+                  <h2 style={{ margin: 0, fontSize: '20px', fontWeight: 800, letterSpacing: '-0.02em' }}>Products</h2>
+                  <span style={{ fontSize: '13px', color: 'var(--admin-muted)' }}>Inventory catalog, inline pricing, and stock control</span>
+                </div>
+                <button
+                  onClick={() => { setIsProductDrawerOpen(true); setSelectedProduct(null); }}
+                  className={styles.btnSky}
+                >
+                  <Plus size={16} />
+                  <span>Add Product</span>
+                </button>
               </div>
-            ) : (
-              <div className={styles.tableCard}>
+
+              {/* Search & Category Filter */}
+              <div style={{ display: 'flex', gap: '10px', marginBottom: '16px', flexWrap: 'wrap', alignItems: 'center' }}>
+                <input
+                  type="search"
+                  placeholder="Search products by title, SKU…"
+                  value={productSearch}
+                  onChange={(e) => setProductSearch(e.target.value)}
+                  style={{ padding: '8px 12px', fontSize: '13px', borderRadius: '8px', border: '1px solid var(--admin-border)', backgroundColor: 'var(--admin-surface)', color: 'var(--admin-text)', width: '280px' }}
+                />
+                <select
+                  value={productCategoryFilter}
+                  onChange={(e) => setProductCategoryFilter(e.target.value)}
+                  style={{ padding: '8px 12px', fontSize: '13px', borderRadius: '8px', border: '1px solid var(--admin-border)', backgroundColor: 'var(--admin-surface)', color: 'var(--admin-text)' }}
+                >
+                  <option value="all">All Categories</option>
+                  <option value="tees">Tees</option>
+                  <option value="caps">Caps</option>
+                  <option value="hoodies-polos">Hoodies & Polos</option>
+                  <option value="trousers">Trousers</option>
+                  <option value="tracksuits">Tracksuits</option>
+                  <option value="shirts">Shirts</option>
+                </select>
+                <span style={{ fontSize: '12px', color: 'var(--admin-muted)', marginLeft: 'auto' }}>
+                  {filteredProducts.length} items
+                </span>
+              </div>
+
+              {/* Products Table with Inline Stock / Price edit */}
+              <div className={styles.tableContainer}>
                 <table className={styles.table}>
                   <thead>
                     <tr>
-                      <th>Reference</th>
-                      <th>Date</th>
-                      <th>Customer Details</th>
-                      <th>Location</th>
-                      <th>Total</th>
-                      <th>Payment</th>
-                      <th>Fulfillment</th>
-                      <th>Actions</th>
+                      <th>Product</th>
+                      <th>Category</th>
+                      <th>SKU</th>
+                      <th>Price</th>
+                      <th>Stock (Click to Edit)</th>
+                      <th>Status</th>
+                      <th>Action</th>
                     </tr>
                   </thead>
                   <tbody>
-                    {filteredOrders.map(order => (
-                      <tr key={order.id}>
-                        <td><strong>{order.orderReference}</strong></td>
-                        <td style={{ whiteSpace: 'nowrap', fontSize: '0.8rem', color: 'var(--text-muted)' }}>{formatDate(order.createdAt)}</td>
+                    {filteredProducts.map((p) => (
+                      <tr key={p.id} className={styles.tableRow}>
                         <td>
-                          <div style={{ fontWeight: 700 }}>{order.customerName}</div>
-                          <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>{order.customerPhone}</div>
-                        </td>
-                        <td>
-                          <div>{order.deliveryCity}</div>
-                          <div style={{ fontSize: '0.72rem', color: 'var(--text-muted)' }}>{order.deliveryState}</div>
-                        </td>
-                        <td><strong>{formatNaira(order.totalKobo)}</strong></td>
-                        <td>{renderPaymentBadge(order.paymentStatus)}</td>
-                        <td>
-                          <select
-                            value={order.fulfillmentStatus}
-                            onChange={e => handleStatusChange(order.orderReference, e.target.value as FulfillmentStatus)}
-                            className={styles.statusSelect}
-                            disabled={order.paymentStatus !== 'paid'}
-                            title={order.paymentStatus !== 'paid' ? 'Requires confirmed payment' : ''}
-                          >
-                            {FULFILLMENT_STATUSES.map(s => <option key={s} value={s}>{s}</option>)}
-                          </select>
-                        </td>
-                        <td>
-                          <div style={{ display: 'flex', gap: '0.35rem', flexWrap: 'wrap' }}>
-                            <button onClick={() => openOrderModal(order)} className="btn btn-outline btn-sm" style={{ padding: '0.25rem 0.65rem', fontSize: '0.75rem' }}>
-                              View
-                            </button>
-                            {order.customerPhone && (
-                              <a
-                                href={formatWhatsAppUrl(order.customerPhone, order.customerName, order.orderReference)}
-                                target="_blank"
-                                rel="noopener noreferrer"
-                                className={styles.whatsappBtn}
-                                title="Chat with customer on WhatsApp"
-                              >
-                                WA 💬
-                              </a>
-                            )}
-                          </div>
-                        </td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
-              </div>
-            )}
-          </div>
-        )}
-
-        {/* ── PRODUCTS TAB ── */}
-        {activeTab === 'products' && (
-          <div>
-            <div style={{ display: 'flex', gap: 'var(--space-3)', marginBottom: 'var(--space-5)', flexWrap: 'wrap', alignItems: 'center', justifyContent: 'space-between' }}>
-              <input
-                type="search"
-                placeholder="Search products by title or category…"
-                value={productSearch}
-                onChange={e => setProductSearch(e.target.value)}
-                style={{ padding: '0.55rem 0.95rem', fontSize: '0.85rem', borderRadius: 'var(--radius-xs)', border: '1px solid var(--border-light)', width: '280px', backgroundColor: 'var(--bg-card)', color: 'var(--text-primary)' }}
-              />
-              <span style={{ fontSize: '0.8rem', color: 'var(--text-muted)' }}>{filteredProducts.length} products listed</span>
-            </div>
-
-            <div className={styles.tableCard}>
-              <table className={styles.table}>
-                <thead>
-                  <tr>
-                    <th>Product</th>
-                    <th>Category</th>
-                    <th>Base Price / Sale</th>
-                    <th>Total Stock</th>
-                    <th>Visibility</th>
-                    <th>Actions</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {filteredProducts.map(product => {
-                    const totalStock = product.variants.reduce((s, v) => s + v.stockQuantity, 0);
-                    const primaryImg = product.images.find(i => i.isPrimary) || product.images[0];
-                    const isEditingThisPrice = editingPriceProductId === product.id;
-
-                    return (
-                      <tr key={product.id}>
-                        <td>
-                          <div style={{ display: 'flex', alignItems: 'center', gap: 'var(--space-3)' }}>
-                            <div style={{ width: 44, height: 55, position: 'relative', borderRadius: 4, overflow: 'hidden', backgroundColor: 'var(--bg-secondary)', flexShrink: 0 }}>
-                              {primaryImg && (
-                                <Image src={primaryImg.imageUrl} alt={product.name} fill sizes="44px" style={{ objectFit: 'cover' }} />
+                          <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+                            <div style={{ width: 40, height: 40, borderRadius: 6, overflow: 'hidden', position: 'relative', backgroundColor: 'var(--admin-canvas)', flexShrink: 0 }}>
+                              {p.images[0] && (
+                                <Image src={p.images[0]} alt={p.title} fill sizes="40px" style={{ objectFit: 'cover' }} />
                               )}
                             </div>
                             <div>
-                              <div style={{ fontWeight: 700, fontSize: '0.85rem' }}>{product.name}</div>
-                              <div style={{ fontSize: '0.72rem', color: 'var(--text-muted)' }}>{product.slug}</div>
+                              <div style={{ fontWeight: 600 }}>{p.title}</div>
+                              <div style={{ fontSize: '11px', color: 'var(--admin-muted)' }}>{p.slug}</div>
                             </div>
                           </div>
                         </td>
-                        <td style={{ textTransform: 'uppercase', fontSize: '0.72rem', fontWeight: 800 }}>{product.category}</td>
+                        <td style={{ textTransform: 'uppercase', fontSize: '11px', fontWeight: 600 }}>{p.category}</td>
+                        <td style={{ fontFamily: 'monospace', fontSize: '12px' }}>{p.sku}</td>
+                        <td className={styles.tabular} style={{ fontWeight: 700 }}>
+                          {formatNgn(p.priceKobo)}
+                        </td>
                         <td>
-                          {isEditingThisPrice ? (
-                            <div style={{ display: 'flex', flexDirection: 'column', gap: '0.35rem' }}>
-                              <div style={{ display: 'flex', alignItems: 'center', gap: '0.25rem' }}>
-                                <span style={{ fontSize: '0.75rem' }}>₦</span>
-                                <input
-                                  type="number"
-                                  value={priceInput}
-                                  onChange={e => setPriceInput(e.target.value)}
-                                  placeholder="Base"
-                                  style={{ width: '85px', padding: '0.25rem 0.4rem', fontSize: '0.78rem', border: '1px solid var(--border-light)', borderRadius: '3px' }}
-                                />
-                              </div>
-                              <div style={{ display: 'flex', alignItems: 'center', gap: '0.25rem' }}>
-                                <span style={{ fontSize: '0.7rem', color: '#10b981' }}>Sale:</span>
-                                <input
-                                  type="number"
-                                  value={salePriceInput}
-                                  onChange={e => setSalePriceInput(e.target.value)}
-                                  placeholder="Leave blank"
-                                  style={{ width: '85px', padding: '0.25rem 0.4rem', fontSize: '0.78rem', border: '1px solid var(--border-light)', borderRadius: '3px' }}
-                                />
-                              </div>
-                              <div style={{ display: 'flex', gap: '0.25rem', marginTop: '0.2rem' }}>
-                                <button onClick={() => saveProductPrice(product)} disabled={savingPrice} className="btn btn-sm btn-sky" style={{ padding: '0.2rem 0.5rem', fontSize: '0.7rem' }}>
-                                  Save
-                                </button>
-                                <button onClick={() => setEditingPriceProductId(null)} className="btn btn-sm btn-outline" style={{ padding: '0.2rem 0.5rem', fontSize: '0.7rem' }}>
-                                  Cancel
-                                </button>
-                              </div>
+                          {inlineEditingStockId === p.id ? (
+                            <div style={{ display: 'flex', gap: '4px', alignItems: 'center' }}>
+                              <input
+                                autoFocus
+                                type="number"
+                                value={inlineStockVal}
+                                onChange={(e) => setInlineStockVal(e.target.value)}
+                                onKeyDown={(e) => {
+                                  if (e.key === 'Enter') handleSaveInlineStock(p.id);
+                                  if (e.key === 'Escape') setInlineEditingStockId(null);
+                                }}
+                                style={{ width: '60px', padding: '3px 6px', fontSize: '12px', borderRadius: '4px', border: '1px solid var(--admin-sky-500)' }}
+                              />
+                              <button onClick={() => handleSaveInlineStock(p.id)} className={styles.btnSky} style={{ padding: '2px 6px', fontSize: '11px', height: '24px' }}>✓</button>
                             </div>
                           ) : (
-                            <div>
-                              <strong>{formatNaira(product.priceKobo)}</strong>
-                              {product.salePriceKobo && (
-                                <div style={{ fontSize: '0.72rem', color: '#10b981', fontWeight: 700 }}>
-                                  Sale: {formatNaira(product.salePriceKobo)}
-                                </div>
-                              )}
-                              <button
-                                onClick={() => startEditPrice(product)}
-                                style={{ background: 'none', border: 'none', color: '#38bdf8', fontSize: '0.72rem', cursor: 'pointer', padding: 0, marginTop: '0.2rem', display: 'block' }}
-                              >
-                                Edit Price ✎
-                              </button>
-                            </div>
+                            <span
+                              onClick={() => { setInlineEditingStockId(p.id); setInlineStockVal(p.stock.toString()); }}
+                              style={{
+                                cursor: 'pointer',
+                                fontWeight: 700,
+                                color: p.stock === 0 ? '#EF4444' : p.stock <= p.lowStockThreshold ? '#F59E0B' : 'inherit',
+                                borderBottom: '1px dashed var(--admin-border)',
+                                paddingBottom: '1px'
+                              }}
+                              title="Click to inline-edit stock"
+                            >
+                              {p.stock === 0 ? 'Out of Stock' : `${p.stock} in stock`}
+                            </span>
                           )}
                         </td>
                         <td>
-                          <span style={{ color: totalStock === 0 ? '#ef4444' : totalStock <= 10 ? '#f59e0b' : 'inherit', fontWeight: 800 }}>
-                            {totalStock === 0 ? 'Out of Stock' : `${totalStock} units`}
+                          <span className={`${styles.badge} ${p.status === 'active' ? styles.badgePaid : styles.badgePending}`}>
+                            {p.status}
                           </span>
                         </td>
                         <td>
-                          <span className={`badge ${product.isPublished ? 'badge-sky' : 'badge-outline'}`}>
-                            {product.isPublished ? 'Published' : 'Draft'}
-                          </span>
-                        </td>
-                        <td>
-                          <div style={{ display: 'flex', gap: '0.35rem', flexWrap: 'wrap' }}>
-                            <button onClick={() => handleTogglePublish(product)} className="btn btn-sm btn-outline" style={{ fontSize: '0.7rem' }}>
-                              {product.isPublished ? 'Unpublish' : 'Publish'}
-                            </button>
-                            <a href={`/products/${product.slug}`} target="_blank" rel="noopener noreferrer" className="btn btn-sm btn-outline" style={{ fontSize: '0.7rem' }}>
-                              View ↗
-                            </a>
-                          </div>
-                        </td>
-                      </tr>
-                    );
-                  })}
-                </tbody>
-              </table>
-            </div>
-          </div>
-        )}
-
-        {/* ── INVENTORY TAB ── */}
-        {activeTab === 'inventory' && (
-          <div className={styles.tableCard}>
-            <table className={styles.table}>
-              <thead>
-                <tr>
-                  <th>Product</th>
-                  <th>Category</th>
-                  <th>Base Price</th>
-                  <th>Variants & Stock Quantities</th>
-                </tr>
-              </thead>
-              <tbody>
-                {products.map(product => (
-                  <tr key={product.id}>
-                    <td>
-                      <div style={{ display: 'flex', alignItems: 'center', gap: 'var(--space-3)' }}>
-                        <div style={{ width: 44, height: 55, position: 'relative', borderRadius: 4, overflow: 'hidden', backgroundColor: 'var(--bg-secondary)', flexShrink: 0 }}>
-                          {product.images[0] && <Image src={product.images[0].imageUrl} alt={product.name} fill sizes="44px" style={{ objectFit: 'cover' }} />}
-                        </div>
-                        <div>
-                          <strong style={{ fontSize: '0.85rem' }}>{product.name}</strong>
-                          <div style={{ fontSize: '0.72rem', color: 'var(--text-muted)' }}>{product.slug}</div>
-                        </div>
-                      </div>
-                    </td>
-                    <td style={{ textTransform: 'uppercase', fontSize: '0.72rem', fontWeight: 800 }}>{product.category}</td>
-                    <td><strong>{formatNaira(product.priceKobo)}</strong></td>
-                    <td>
-                      <div style={{ display: 'flex', flexDirection: 'column', gap: 'var(--space-2)' }}>
-                        {product.variants.map(v => (
-                          <div key={v.id} style={{ display: 'flex', alignItems: 'center', gap: 'var(--space-2)', flexWrap: 'wrap' }}>
-                            <span style={{ width: '80px', fontWeight: 700, fontSize: '0.8rem' }}>Size {v.size}:</span>
-                            <input
-                              type="number"
-                              min="0"
-                              defaultValue={v.stockQuantity}
-                              onChange={e => setStockUpdates(prev => ({ ...prev, [v.id]: parseInt(e.target.value) || 0 }))}
-                              className={styles.stockInput}
-                              aria-label={`Stock for ${product.name} size ${v.size}`}
-                            />
-                            <button
-                              onClick={() => handleStockUpdate(v.id)}
-                              disabled={isSavingStock === v.id || stockUpdates[v.id] === undefined}
-                              className="btn btn-primary btn-sm"
-                              style={{ padding: '0.25rem 0.65rem', fontSize: '0.72rem' }}
-                            >
-                              {isSavingStock === v.id ? 'Syncing…' : 'Update'}
-                            </button>
-                            {v.stockQuantity === 0 && <span style={{ color: '#ef4444', fontSize: '0.72rem', fontWeight: 800 }}>Out of Stock</span>}
-                            {v.stockQuantity > 0 && v.stockQuantity <= 10 && <span style={{ color: '#f59e0b', fontSize: '0.72rem', fontWeight: 800 }}>Low Stock</span>}
-                          </div>
-                        ))}
-                      </div>
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
-        )}
-
-        {/* ── EMAILS AUDIT TAB ── */}
-        {activeTab === 'emails' && (
-          <div>
-            {/* Live Test Console */}
-            <div style={{
-              background: 'linear-gradient(180deg, var(--bg-secondary) 0%, var(--bg-card) 100%)',
-              border: '1px solid var(--border-light)',
-              borderRadius: 'var(--radius-xs)',
-              padding: 'var(--space-6)',
-              marginBottom: 'var(--space-6)',
-            }}>
-              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', flexWrap: 'wrap', gap: 'var(--space-4)' }}>
-                <div>
-                  <span className="section-tag">[ RESEND TRANSACTIONAL AUDIT ]</span>
-                  <h3 style={{ fontSize: '1.1rem', fontWeight: 800, textTransform: 'uppercase', margin: '0.25rem 0 0.5rem 0' }}>
-                    Automated Email Engine
-                  </h3>
-                  <p style={{ fontSize: '0.85rem', color: 'var(--text-secondary)', margin: 0, maxWidth: '600px' }}>
-                    Emails dispatch live from <strong>Deen Drip &lt;orders@deendrip.shop&gt;</strong> authenticated via Resend DNS (DKIM, SPF, MX).
-                  </p>
-                </div>
-                <button onClick={fetchEmailLogs} disabled={loadingEmails} className="btn btn-outline btn-sm">
-                  {loadingEmails ? 'Refreshing…' : '↻ Refresh Logs'}
-                </button>
-              </div>
-
-              {/* Test Email Box */}
-              <div style={{ marginTop: 'var(--space-5)', display: 'flex', gap: 'var(--space-3)', flexWrap: 'wrap', alignItems: 'center' }}>
-                <input
-                  type="email"
-                  placeholder="Enter email to verify live delivery (e.g. you@gmail.com)…"
-                  value={testEmailInput}
-                  onChange={e => setTestEmailInput(e.target.value)}
-                  style={{
-                    flex: '1', minWidth: '280px', maxWidth: '420px',
-                    padding: '0.65rem 0.95rem', fontSize: '0.85rem',
-                    border: '1px solid var(--border-light)', borderRadius: 'var(--radius-xs)',
-                    backgroundColor: 'var(--bg-card)', color: 'var(--text-primary)'
-                  }}
-                />
-                <button
-                  onClick={handleSendTestEmail}
-                  disabled={sendingTestEmail || !testEmailInput.trim()}
-                  className="btn btn-sky"
-                  style={{ padding: '0.65rem 1.25rem', fontSize: '0.82rem' }}
-                >
-                  {sendingTestEmail ? 'Sending via Resend…' : '⚡ Send Test Email'}
-                </button>
-              </div>
-            </div>
-
-            {/* Email Logs Table */}
-            <div className={styles.tableCard}>
-              <table className={styles.table}>
-                <thead>
-                  <tr>
-                    <th>Timestamp</th>
-                    <th>Recipient</th>
-                    <th>Subject</th>
-                    <th>Type</th>
-                    <th>Order Ref</th>
-                    <th>Provider</th>
-                    <th>Status</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {emailLogs.length === 0 ? (
-                    <tr>
-                      <td colSpan={7} style={{ textAlign: 'center', padding: 'var(--space-8)', color: 'var(--text-muted)' }}>
-                        {loadingEmails ? 'Loading email audit logs…' : 'No emails dispatched yet.'}
-                      </td>
-                    </tr>
-                  ) : (
-                    emailLogs.map(log => (
-                      <tr key={log.id}>
-                        <td style={{ whiteSpace: 'nowrap', fontSize: '0.78rem', color: 'var(--text-muted)' }}>{formatDate(log.createdAt)}</td>
-                        <td><strong style={{ fontSize: '0.85rem' }}>{log.recipient}</strong></td>
-                        <td style={{ maxWidth: '240px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{log.subject}</td>
-                        <td><span style={{ fontSize: '0.72rem', textTransform: 'uppercase', fontWeight: 800 }}>{log.emailType}</span></td>
-                        <td>
-                          {log.orderReference ? (
-                            <strong style={{ color: '#38bdf8', cursor: 'pointer' }} onClick={() => {
-                              const o = orders.find(ord => ord.orderReference === log.orderReference);
-                              if (o) { setSelectedOrder(o); }
-                            }}>
-                              {log.orderReference}
-                            </strong>
-                          ) : '—'}
-                        </td>
-                        <td><span className="badge badge-outline" style={{ fontSize: '0.7rem' }}>{log.provider}</span></td>
-                        <td>
-                          <span className={`${styles.statusPill} ${log.status === 'delivered' ? styles.pillPaid : log.status === 'simulated' ? styles.pillPending : styles.pillFailed}`}>
-                            <span className={styles.statusDot} />
-                            {log.status}
-                          </span>
-                        </td>
-                      </tr>
-                    ))
-                  )}
-                </tbody>
-              </table>
-            </div>
-          </div>
-        )}
-
-        {/* ── INQUIRIES TAB ── */}
-        {activeTab === 'inquiries' && (
-          <div>
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 'var(--space-4)' }}>
-              <div>
-                <h3 style={{ fontSize: '1.1rem', fontWeight: 800, textTransform: 'uppercase', margin: 0 }}>
-                  Customer Inquiries & Support
-                </h3>
-                <p style={{ fontSize: '0.8rem', color: 'var(--text-secondary)', margin: '0.2rem 0 0 0' }}>
-                  Messages sent via the customer contact page.
-                </p>
-              </div>
-              <button onClick={fetchInquiries} disabled={loadingInquiries} className="btn btn-outline btn-sm">
-                {loadingInquiries ? 'Refreshing…' : '↻ Refresh'}
-              </button>
-            </div>
-
-            <div className={styles.tableCard}>
-              <table className={styles.table}>
-                <thead>
-                  <tr>
-                    <th>Date</th>
-                    <th>Customer</th>
-                    <th>Email</th>
-                    <th>Order Ref</th>
-                    <th>Message</th>
-                    <th>Reply Action</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {inquiries.length === 0 ? (
-                    <tr>
-                      <td colSpan={6} style={{ textAlign: 'center', padding: 'var(--space-8)', color: 'var(--text-muted)' }}>
-                        {loadingInquiries ? 'Loading inquiries…' : 'No inquiries received yet.'}
-                      </td>
-                    </tr>
-                  ) : (
-                    inquiries.map(inq => (
-                      <tr key={inq.id}>
-                        <td style={{ whiteSpace: 'nowrap', fontSize: '0.78rem', color: 'var(--text-muted)' }}>{formatDate(inq.createdAt)}</td>
-                        <td><strong>{inq.name}</strong></td>
-                        <td>
-                          <a href={`mailto:${inq.email}?subject=Deen%20Drip%20Support%20Reply`} style={{ color: '#38bdf8', textDecoration: 'underline' }}>
-                            {inq.email}
-                          </a>
-                        </td>
-                        <td>
-                          {inq.orderRef ? (
-                            <strong style={{ color: '#38bdf8', cursor: 'pointer' }} onClick={() => {
-                              const o = orders.find(ord => ord.orderReference === inq.orderRef);
-                              if (o) { setSelectedOrder(o); }
-                            }}>
-                              {inq.orderRef}
-                            </strong>
-                          ) : '—'}
-                        </td>
-                        <td style={{ maxWidth: '320px', fontSize: '0.82rem', lineHeight: '1.4' }}>
-                          <div style={{ whiteSpace: 'pre-wrap' }}>{inq.message}</div>
-                        </td>
-                        <td>
-                          <a
-                            href={`mailto:${inq.email}?subject=Deen%20Drip%20Support%20Reply&body=Salam%20${encodeURIComponent(inq.name)},%0D%0A%0D%0AThank%20you%20for%20contacting%20Deen%20Drip.%0D%0A`}
-                            className="btn btn-sm btn-sky"
-                            style={{ fontSize: '0.72rem', whiteSpace: 'nowrap' }}
+                          <button
+                            onClick={() => { setSelectedProduct(p); setIsProductDrawerOpen(true); }}
+                            className={styles.btnSecondary}
+                            style={{ padding: '4px 10px', height: '28px', fontSize: '11px' }}
                           >
-                            Reply ✉
-                          </a>
+                            Edit
+                          </button>
                         </td>
-                      </tr>
-                    ))
-                  )}
-                </tbody>
-              </table>
-            </div>
-          </div>
-        )}
-
-        {/* ── DELIVERY TAB ── */}
-        {activeTab === 'delivery' && <DeliveryTab onToast={showToast} />}
-
-        {/* ── SETTINGS TAB ── */}
-        {activeTab === 'settings' && <SettingsTab onToast={showToast} />}
-
-      </div>
-
-      {/* ── ORDER DETAIL MODAL ── */}
-      {selectedOrder && (
-        <div
-          style={{ position: 'fixed', inset: 0, backgroundColor: 'rgba(5,7,12,0.85)', backdropFilter: 'blur(6px)', zIndex: 999, display: 'flex', alignItems: 'flex-start', justifyContent: 'center', padding: 'var(--space-4)', overflowY: 'auto' }}
-          onClick={e => { if (e.target === e.currentTarget) setSelectedOrder(null); }}
-        >
-          <div style={{ backgroundColor: 'var(--bg-card)', border: '1px solid var(--border-light)', borderRadius: 'var(--radius-xs)', maxWidth: '720px', width: '100%', padding: 'var(--space-8)', marginTop: 'var(--space-6)', marginBottom: 'var(--space-6)', boxShadow: '0 20px 40px rgba(0,0,0,0.5)' }}>
-            
-            {/* Modal header */}
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 'var(--space-6)', borderBottom: '1px solid var(--border-light)', paddingBottom: 'var(--space-4)' }}>
-              <div>
-                <span className="section-tag" style={{ margin: 0 }}>ORDER INSPECTION</span>
-                <h3 style={{ fontSize: '1.25rem', fontWeight: 900, textTransform: 'uppercase', letterSpacing: '-0.02em', margin: '0.25rem 0' }}>
-                  #{selectedOrder.orderReference}
-                </h3>
-                <div style={{ display: 'flex', gap: 'var(--space-2)', marginTop: 'var(--space-2)', flexWrap: 'wrap', alignItems: 'center' }}>
-                  {renderPaymentBadge(selectedOrder.paymentStatus)}
-                  {renderFulfillmentBadge(selectedOrder.fulfillmentStatus)}
-                  <span style={{ fontSize: '0.78rem', color: 'var(--text-muted)' }}>{formatDate(selectedOrder.createdAt)}</span>
-                </div>
-              </div>
-              <div style={{ display: 'flex', gap: '0.5rem', alignItems: 'center' }}>
-                <button
-                  onClick={() => setShowWaybill(prev => !prev)}
-                  className="btn btn-outline btn-sm"
-                  style={{ fontSize: '0.75rem' }}
-                >
-                  {showWaybill ? '✕ Close Waybill' : '📄 Print Waybill'}
-                </button>
-                <button onClick={() => setSelectedOrder(null)} style={{ fontSize: '1.25rem', color: 'var(--text-muted)', background: 'none', border: 'none', cursor: 'pointer', padding: '0.25rem' }}>✕</button>
-              </div>
-            </div>
-
-            {/* Printable Waybill Slip View */}
-            {showWaybill ? (
-              <div className={styles.printableSlip} style={{ background: '#ffffff', color: '#000000', padding: '24px', borderRadius: '4px', border: '2px solid #000000', marginBottom: 'var(--space-6)' }}>
-                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', borderBottom: '2px solid #000', paddingBottom: '12px', marginBottom: '16px' }}>
-                  <div>
-                    <h2 style={{ margin: 0, fontSize: '20px', fontWeight: 900, letterSpacing: '0.1em' }}>DEEN DRIP LAGOS</h2>
-                    <p style={{ margin: '4px 0 0 0', fontSize: '12px' }}>Faith, Culture & Streetwear · orders@deendrip.shop · +234 906 414 7689</p>
-                  </div>
-                  <div style={{ textAlign: 'right' }}>
-                    <div style={{ fontSize: '16px', fontWeight: 900 }}>WAYBILL SLIP</div>
-                    <div style={{ fontSize: '13px', fontWeight: 700 }}>#{selectedOrder.orderReference}</div>
-                  </div>
-                </div>
-
-                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '20px', marginBottom: '16px', fontSize: '13px' }}>
-                  <div>
-                    <strong style={{ textTransform: 'uppercase', fontSize: '11px', display: 'block', marginBottom: '4px' }}>DELIVER TO (RECIPIENT):</strong>
-                    <div style={{ fontSize: '14px', fontWeight: 800 }}>{selectedOrder.customerName}</div>
-                    <div>{selectedOrder.deliveryAddress}</div>
-                    <div>{selectedOrder.deliveryCity}, {selectedOrder.deliveryState}</div>
-                    <div style={{ fontWeight: 800, marginTop: '4px' }}>Tel: {selectedOrder.customerPhone}</div>
-                  </div>
-                  <div>
-                    <strong style={{ textTransform: 'uppercase', fontSize: '11px', display: 'block', marginBottom: '4px' }}>DISPATCH / COURIER DETAILS:</strong>
-                    <div><strong>Courier / Waybill:</strong> {selectedOrder.trackingReference || 'Pending Assignment'}</div>
-                    <div><strong>Payment Status:</strong> {selectedOrder.paymentStatus.toUpperCase()}</div>
-                    <div><strong>Order Date:</strong> {new Date(selectedOrder.createdAt).toLocaleDateString()}</div>
-                  </div>
-                </div>
-
-                <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '12px', marginBottom: '16px' }}>
-                  <thead>
-                    <tr style={{ borderBottom: '1px solid #000' }}>
-                      <th style={{ textAlign: 'left', padding: '6px 0' }}>Item Description</th>
-                      <th style={{ textAlign: 'center', padding: '6px 0' }}>Size</th>
-                      <th style={{ textAlign: 'center', padding: '6px 0' }}>Qty</th>
-                      <th style={{ textAlign: 'right', padding: '6px 0' }}>Subtotal</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {selectedOrder.items?.map(it => (
-                      <tr key={it.id} style={{ borderBottom: '1px solid #ddd' }}>
-                        <td style={{ padding: '6px 0' }}>{it.productNameSnapshot}</td>
-                        <td style={{ textAlign: 'center', padding: '6px 0' }}>{it.variantNameSnapshot}</td>
-                        <td style={{ textAlign: 'center', padding: '6px 0' }}>{it.quantity}</td>
-                        <td style={{ textAlign: 'right', padding: '6px 0' }}>{formatNaira(it.subtotalKobo)}</td>
                       </tr>
                     ))}
                   </tbody>
                 </table>
-
-                <div style={{ textAlign: 'right', fontSize: '13px', borderTop: '2px solid #000', paddingTop: '8px' }}>
-                  <div>Delivery Fee: {selectedOrder.deliveryFeeKobo === 0 ? 'FREE' : formatNaira(selectedOrder.deliveryFeeKobo)}</div>
-                  <div style={{ fontSize: '15px', fontWeight: 900, marginTop: '4px' }}>Total Paid: {formatNaira(selectedOrder.totalKobo)}</div>
-                </div>
-
-                <div style={{ marginTop: '20px', display: 'flex', gap: '8px' }}>
-                  <button onClick={() => window.print()} className="btn btn-sm btn-primary">
-                    🖨 Send to Printer
-                  </button>
-                  <button onClick={() => setShowWaybill(false)} className="btn btn-sm btn-outline">
-                    Back to Order Details
-                  </button>
-                </div>
-              </div>
-            ) : null}
-
-            {/* Customer & Address Details */}
-            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 'var(--space-4)', marginBottom: 'var(--space-6)', fontSize: '0.88rem' }}>
-              <div style={{ background: 'var(--bg-secondary)', padding: 'var(--space-4)', borderRadius: 'var(--radius-xs)' }}>
-                <div style={{ fontSize: '0.72rem', fontWeight: 800, textTransform: 'uppercase', color: 'var(--text-muted)', marginBottom: '0.35rem' }}>Customer Contact</div>
-                <div style={{ fontWeight: 800, fontSize: '0.95rem' }}>{selectedOrder.customerName}</div>
-                <div style={{ color: 'var(--text-secondary)', marginTop: '0.2rem' }}>{selectedOrder.customerEmail}</div>
-                <div style={{ fontWeight: 700, marginTop: '0.2rem', display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-                  <span>{selectedOrder.customerPhone}</span>
-                  {selectedOrder.customerPhone && (
-                    <a
-                      href={formatWhatsAppUrl(selectedOrder.customerPhone, selectedOrder.customerName, selectedOrder.orderReference)}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      className={styles.whatsappBtn}
-                      style={{ padding: '0.25rem 0.55rem', fontSize: '0.72rem' }}
-                    >
-                      WhatsApp 💬
-                    </a>
-                  )}
-                </div>
-              </div>
-
-              <div style={{ background: 'var(--bg-secondary)', padding: 'var(--space-4)', borderRadius: 'var(--radius-xs)' }}>
-                <div style={{ fontSize: '0.72rem', fontWeight: 800, textTransform: 'uppercase', color: 'var(--text-muted)', marginBottom: '0.35rem' }}>Delivery Address</div>
-                <div style={{ fontWeight: 600 }}>{selectedOrder.deliveryAddress}</div>
-                <div style={{ color: 'var(--text-secondary)', marginTop: '0.2rem' }}>{selectedOrder.deliveryCity}, {selectedOrder.deliveryState}</div>
-                <div style={{ fontSize: '0.75rem', color: '#10b981', fontWeight: 800, marginTop: '0.4rem' }}>
-                  Delivery Fee: {selectedOrder.deliveryFeeKobo === 0 ? 'FREE' : formatNaira(selectedOrder.deliveryFeeKobo)}
-                </div>
               </div>
             </div>
+          )}
 
-            {/* Stepper Status Buttons */}
-            <div style={{ marginBottom: 'var(--space-5)' }}>
-              <label style={{ fontSize: '0.72rem', fontWeight: 800, textTransform: 'uppercase', color: 'var(--text-muted)', display: 'block', marginBottom: '0.35rem' }}>
-                Fulfillment Pipeline
-              </label>
-              <div className={styles.stepperContainer}>
-                {(['pending', 'processing', 'shipped', 'delivered', 'cancelled'] as FulfillmentStatus[]).map(st => (
-                  <button
-                    key={st}
-                    onClick={() => handleStatusChange(selectedOrder.orderReference, st)}
-                    disabled={selectedOrder.paymentStatus !== 'paid' && st !== 'cancelled'}
-                    className={`${styles.stepBtn} ${selectedOrder.fulfillmentStatus === st ? styles.stepBtnActive : ''}`}
-                  >
-                    {st}
-                  </button>
-                ))}
+          {/* ══════════════════════════════════════════════════════════════
+              MODULE 4: CUSTOMERS
+             ══════════════════════════════════════════════════════════════ */}
+          {activeTab === 'customers' && (
+            <div>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '18px', flexWrap: 'wrap', gap: '12px' }}>
+                <div>
+                  <h2 style={{ margin: 0, fontSize: '20px', fontWeight: 800, letterSpacing: '-0.02em' }}>Customers</h2>
+                  <span style={{ fontSize: '13px', color: 'var(--admin-muted)' }}>Audience directory and lifetime spend tracking</span>
+                </div>
               </div>
-            </div>
 
-            {/* Tracking Reference & Dispatch Email Action */}
-            <div style={{ marginBottom: 'var(--space-6)', background: 'var(--bg-secondary)', padding: 'var(--space-4)', borderRadius: 'var(--radius-xs)', border: '1px solid var(--border-light)' }}>
-              <label style={{ fontSize: '0.75rem', fontWeight: 800, textTransform: 'uppercase', color: 'var(--text-muted)', display: 'block', marginBottom: '0.35rem' }}>
-                🚀 Courier Waybill / Tracking & Automated Dispatch Email
-              </label>
-              <div style={{ display: 'flex', gap: 'var(--space-2)', flexWrap: 'wrap', marginBottom: '0.5rem' }}>
-                <select
-                  value={courierSelect}
-                  onChange={e => setCourierSelect(e.target.value)}
-                  className={styles.statusSelect}
-                  style={{ minWidth: '150px' }}
-                >
-                  {COURIER_OPTIONS.map(c => <option key={c} value={c}>{c}</option>)}
-                </select>
+              {/* Search & Segments */}
+              <div style={{ display: 'flex', gap: '10px', marginBottom: '16px', flexWrap: 'wrap', alignItems: 'center' }}>
                 <input
-                  type="text"
-                  value={trackingInput}
-                  onChange={e => setTrackingInput(e.target.value)}
-                  placeholder="e.g. 10928472 or Lagos Rider #04"
-                  style={{ flex: 1, minWidth: '180px', padding: '0.5rem 0.75rem', fontSize: '0.85rem', borderRadius: 'var(--radius-xs)', border: '1px solid var(--border-light)', backgroundColor: 'var(--bg-card)', color: 'var(--text-primary)' }}
+                  type="search"
+                  placeholder="Search customer name, email, phone…"
+                  value={customerSearch}
+                  onChange={(e) => setCustomerSearch(e.target.value)}
+                  style={{ padding: '8px 12px', fontSize: '13px', borderRadius: '8px', border: '1px solid var(--admin-border)', backgroundColor: 'var(--admin-surface)', color: 'var(--admin-text)', width: '280px' }}
                 />
+
+                <div style={{ display: 'flex', gap: '4px', overflowX: 'auto' }}>
+                  {(['all', 'vip', 'repeat', 'new', 'at_risk', 'never_ordered'] as const).map((seg) => (
+                    <button
+                      key={seg}
+                      onClick={() => setCustomerSegmentFilter(seg)}
+                      style={{
+                        padding: '6px 12px',
+                        fontSize: '12px',
+                        fontWeight: customerSegmentFilter === seg ? 600 : 500,
+                        borderRadius: '9999px',
+                        border: '1px solid var(--admin-border)',
+                        background: customerSegmentFilter === seg ? 'var(--admin-ink)' : 'var(--admin-surface)',
+                        color: customerSegmentFilter === seg ? '#fff' : 'var(--admin-muted)',
+                        cursor: 'pointer',
+                        textTransform: 'uppercase',
+                      }}
+                    >
+                      {seg.replace('_', ' ')}
+                    </button>
+                  ))}
+                </div>
+              </div>
+
+              <div className={styles.tableContainer}>
+                <table className={styles.table}>
+                  <thead>
+                    <tr>
+                      <th>Customer Name</th>
+                      <th>Email</th>
+                      <th>Location</th>
+                      <th>Orders</th>
+                      <th>Total Spend (LTV)</th>
+                      <th>Segment</th>
+                      <th>Action</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {filteredCustomers.map((c) => (
+                      <tr key={c.id} className={styles.tableRow} onClick={() => { setSelectedCustomer(c); setIsCustomerDrawerOpen(true); }} style={{ cursor: 'pointer' }}>
+                        <td><strong>{c.name}</strong></td>
+                        <td style={{ color: 'var(--admin-muted)' }}>{c.email}</td>
+                        <td>{c.city}, {c.state}</td>
+                        <td className={styles.tabular}>{c.totalOrders}</td>
+                        <td className={styles.tabular} style={{ fontWeight: 700, color: 'var(--admin-sky-700)' }}>
+                          {formatNgn(c.totalSpentKobo)}
+                        </td>
+                        <td>
+                          <span className={styles.badge} style={{ textTransform: 'uppercase', backgroundColor: 'var(--admin-sky-100)', color: 'var(--admin-sky-700)' }}>
+                            {c.segment}
+                          </span>
+                        </td>
+                        <td>
+                          <button
+                            onClick={(e) => { e.stopPropagation(); setSelectedCustomer(c); setIsCustomerDrawerOpen(true); }}
+                            className={styles.btnSecondary}
+                            style={{ padding: '4px 10px', height: '28px', fontSize: '11px' }}
+                          >
+                            Profile
+                          </button>
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            </div>
+          )}
+
+          {/* ══════════════════════════════════════════════════════════════
+              MODULE 5: EMAIL & FOLLOW-UPS
+             ══════════════════════════════════════════════════════════════ */}
+          {activeTab === 'email' && (
+            <div>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '18px', flexWrap: 'wrap', gap: '12px' }}>
+                <div>
+                  <h2 style={{ margin: 0, fontSize: '20px', fontWeight: 800, letterSpacing: '-0.02em' }}>Email & Follow-ups</h2>
+                  <span style={{ fontSize: '13px', color: 'var(--admin-muted)' }}>Automated engagement rules and personalized AI campaigns</span>
+                </div>
                 <button
-                  onClick={handleSaveTrackingAndDispatch}
-                  disabled={savingOrder || selectedOrder.paymentStatus !== 'paid'}
-                  className="btn btn-sm btn-sky"
-                  style={{ whiteSpace: 'nowrap' }}
+                  onClick={() => setIsEmailComposerOpen(true)}
+                  className={styles.btnSky}
                 >
-                  {savingOrder ? 'Updating…' : 'Mark Shipped & Send Email ✉'}
+                  <Mail size={16} />
+                  <span>Compose Email</span>
                 </button>
               </div>
 
-              {selectedOrder.trackingReference && (
-                <div style={{ fontSize: '0.78rem', color: '#38bdf8', marginTop: '0.25rem' }}>
-                  <strong>Current Assigned Reference:</strong> {selectedOrder.trackingReference}
+              {/* Follow-ups Due Today */}
+              <div className={styles.card} style={{ marginBottom: '24px' }}>
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '12px' }}>
+                  <h3 style={{ margin: 0, fontSize: '14px', fontWeight: 700 }}>Follow-ups Due Today ({dueFollowUps.length})</h3>
+                  <span style={{ fontSize: '12px', color: 'var(--admin-muted)' }}>Automated retention queues</span>
                 </div>
-              )}
-            </div>
-
-            {/* Line items */}
-            <div style={{ fontSize: '0.75rem', fontWeight: 800, textTransform: 'uppercase', color: 'var(--text-muted)', marginBottom: 'var(--space-2)' }}>
-              Ordered Items ({selectedOrder.items?.length || 0})
-            </div>
-            <div style={{ display: 'flex', flexDirection: 'column', gap: 'var(--space-2)', marginBottom: 'var(--space-5)' }}>
-              {selectedOrder.items?.map(it => (
-                <div key={it.id} style={{ display: 'flex', justifyContent: 'space-between', padding: '0.55rem 0', borderBottom: '1px solid var(--border-subtle)', fontSize: '0.88rem' }}>
-                  <div>
-                    <strong>{it.productNameSnapshot}</strong>
-                    <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>Size: <strong>{it.variantNameSnapshot}</strong> · Qty: {it.quantity}</div>
+                {dueFollowUps.length === 0 ? (
+                  <p style={{ fontSize: '13px', color: 'var(--admin-muted)', margin: 0 }}>All automated customer follow-ups for today are clear.</p>
+                ) : (
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
+                    {dueFollowUps.map((item) => (
+                      <div key={item.id} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '12px 14px', borderRadius: '10px', background: 'var(--admin-canvas)', border: '1px solid var(--admin-border)' }}>
+                        <div>
+                          <div style={{ fontSize: '13px', fontWeight: 600 }}>{item.customerName} ({item.customerEmail})</div>
+                          <div style={{ fontSize: '11px', color: 'var(--admin-muted)', marginTop: '2px' }}>{item.ruleTitle} · Due {item.dueDate}</div>
+                          <div style={{ fontSize: '12px', color: 'var(--admin-text)', marginTop: '4px', fontStyle: 'italic' }}>
+                            "{item.previewMessage}"
+                          </div>
+                        </div>
+                        <div style={{ display: 'flex', gap: '8px' }}>
+                          <button
+                            onClick={() => {
+                              const found = customers.find(c => c.email === item.customerEmail);
+                              setEmailTargetCustomer(found || null);
+                              setIsEmailComposerOpen(true);
+                            }}
+                            className={styles.btnSky}
+                            style={{ padding: '4px 10px', height: '28px', fontSize: '11px' }}
+                          >
+                            Review & Send
+                          </button>
+                          <button
+                            onClick={() => handleDismissDueFollowUp(item.id)}
+                            className={styles.btnSecondary}
+                            style={{ padding: '4px 10px', height: '28px', fontSize: '11px' }}
+                          >
+                            Dismiss
+                          </button>
+                        </div>
+                      </div>
+                    ))}
                   </div>
-                  <strong style={{ color: 'var(--accent-primary)' }}>{formatNaira(it.subtotalKobo)}</strong>
-                </div>
-              ))}
-            </div>
+                )}
+              </div>
 
-            {/* Totals */}
-            <div style={{ borderTop: '1px solid var(--border-light)', paddingTop: 'var(--space-4)', marginBottom: 'var(--space-5)', fontSize: '0.88rem' }}>
-              <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '0.35rem' }}>
-                <span>Subtotal</span><span>{formatNaira(selectedOrder.subtotalKobo)}</span>
-              </div>
-              <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '0.35rem' }}>
-                <span>Delivery Fee</span><span>{selectedOrder.deliveryFeeKobo === 0 ? 'FREE' : formatNaira(selectedOrder.deliveryFeeKobo)}</span>
-              </div>
-              <div style={{ display: 'flex', justifyContent: 'space-between', fontWeight: 900, fontSize: '1.05rem', borderTop: '1px solid var(--border-light)', paddingTop: 'var(--space-3)', marginTop: 'var(--space-2)' }}>
-                <span>Total Amount</span><span style={{ color: 'var(--accent-primary)' }}>{formatNaira(selectedOrder.totalKobo)}</span>
-              </div>
-            </div>
-
-            {/* Email Resend Actions */}
-            <div style={{ borderTop: '1px solid var(--border-light)', paddingTop: 'var(--space-4)', marginBottom: 'var(--space-5)' }}>
-              <div style={{ fontSize: '0.72rem', fontWeight: 800, textTransform: 'uppercase', color: 'var(--text-muted)', marginBottom: 'var(--space-2)' }}>
-                Customer Communication
-              </div>
-              <div style={{ display: 'flex', gap: 'var(--space-2)', flexWrap: 'wrap' }}>
-                <button
-                  onClick={() => handleResendOrderEmail('confirmation')}
-                  disabled={resendingEmail}
-                  className="btn btn-outline btn-sm"
-                  style={{ fontSize: '0.75rem' }}
-                >
-                  {resendingEmail ? 'Dispatching…' : '↻ Resend Order Receipt'}
-                </button>
-                <button
-                  onClick={() => handleResendOrderEmail('shipped')}
-                  disabled={resendingEmail || selectedOrder.fulfillmentStatus !== 'shipped'}
-                  className="btn btn-outline btn-sm"
-                  style={{ fontSize: '0.75rem' }}
-                >
-                  {resendingEmail ? 'Dispatching…' : '↻ Resend Waybill/Shipping Email'}
-                </button>
-              </div>
-            </div>
-
-            {/* Staff Notes */}
-            <div style={{ borderTop: '1px solid var(--border-light)', paddingTop: 'var(--space-4)' }}>
-              <div style={{ fontSize: '0.72rem', fontWeight: 800, textTransform: 'uppercase', color: 'var(--text-muted)', marginBottom: 'var(--space-3)' }}>Staff Notes</div>
-              {orderNotes.length > 0 && (
-                <div style={{ display: 'flex', flexDirection: 'column', gap: 'var(--space-2)', marginBottom: 'var(--space-3)' }}>
-                  {orderNotes.map(n => (
-                    <div key={n.id} style={{ padding: 'var(--space-2) var(--space-3)', backgroundColor: 'var(--bg-secondary)', borderRadius: 'var(--radius-xs)', fontSize: '0.82rem' }}>
-                      <div style={{ fontSize: '0.72rem', color: 'var(--text-muted)', marginBottom: '0.2rem' }}>{n.adminName} · {formatDate(n.createdAt)}</div>
-                      {n.note}
+              {/* Automation Rules */}
+              <div className={styles.card}>
+                <h3 style={{ margin: '0 0 14px', fontSize: '14px', fontWeight: 700 }}>Automated Follow-up Rules</h3>
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
+                  {followUpRules.map((rule) => (
+                    <div key={rule.id} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '12px 16px', borderRadius: '10px', border: '1px solid var(--admin-border)' }}>
+                      <div>
+                        <div style={{ fontSize: '14px', fontWeight: 600 }}>{rule.title}</div>
+                        <div style={{ fontSize: '12px', color: 'var(--admin-muted)', marginTop: '2px' }}>{rule.description}</div>
+                      </div>
+                      <button
+                        onClick={() => handleToggleRule(rule.id)}
+                        className={rule.isEnabled ? styles.btnSky : styles.btnSecondary}
+                        style={{ padding: '4px 12px', height: '30px', fontSize: '12px' }}
+                      >
+                        {rule.isEnabled ? 'Active' : 'Paused'}
+                      </button>
                     </div>
                   ))}
                 </div>
-              )}
-              <div style={{ display: 'flex', gap: 'var(--space-2)' }}>
-                <input
-                  type="text"
-                  value={newNote}
-                  onChange={e => setNewNote(e.target.value)}
-                  placeholder="Add an internal note for staff…"
-                  onKeyDown={e => e.key === 'Enter' && handleAddNote()}
-                  style={{ flex: 1, padding: '0.5rem 0.75rem', fontSize: '0.85rem', borderRadius: 'var(--radius-xs)', border: '1px solid var(--border-light)', backgroundColor: 'var(--bg-card)', color: 'var(--text-primary)' }}
-                />
-                <button onClick={handleAddNote} disabled={savingOrder || !newNote.trim()} className="btn btn-sm btn-sky">Add Note</button>
               </div>
             </div>
+          )}
 
+          {/* ══════════════════════════════════════════════════════════════
+              MODULE 6: ANALYTICS
+             ══════════════════════════════════════════════════════════════ */}
+          {activeTab === 'analytics' && (
+            <div>
+              <div style={{ marginBottom: '20px' }}>
+                <h2 style={{ margin: 0, fontSize: '20px', fontWeight: 800, letterSpacing: '-0.02em' }}>Analytics & Reports</h2>
+                <span style={{ fontSize: '13px', color: 'var(--admin-muted)' }}>Commercial sales velocity, channels, and conversion metrics</span>
+              </div>
+
+              <SalesChart data={salesChartData} />
+
+              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '16px' }}>
+                {/* Revenue by Channel */}
+                <div className={styles.card}>
+                  <h3 style={{ margin: '0 0 12px', fontSize: '14px', fontWeight: 700 }}>Revenue by Channel</h3>
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: '8px', fontSize: '13px' }}>
+                    <div style={{ display: 'flex', justifyContent: 'space-between' }}>
+                      <span>Direct Web</span>
+                      <strong className={styles.tabular}>58%</strong>
+                    </div>
+                    <div style={{ display: 'flex', justifyContent: 'space-between' }}>
+                      <span>Instagram Direct</span>
+                      <strong className={styles.tabular}>24%</strong>
+                    </div>
+                    <div style={{ display: 'flex', justifyContent: 'space-between' }}>
+                      <span>WhatsApp Storefront</span>
+                      <strong className={styles.tabular}>14%</strong>
+                    </div>
+                    <div style={{ display: 'flex', justifyContent: 'space-between' }}>
+                      <span>Search & Organic</span>
+                      <strong className={styles.tabular}>4%</strong>
+                    </div>
+                  </div>
+                </div>
+
+                {/* Orders by Status */}
+                <div className={styles.card}>
+                  <h3 style={{ margin: '0 0 12px', fontSize: '14px', fontWeight: 700 }}>Orders by Stage</h3>
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: '8px', fontSize: '13px' }}>
+                    <div style={{ display: 'flex', justifyContent: 'space-between' }}>
+                      <span>Delivered</span>
+                      <strong className={styles.tabular}>{pipeline.delivered}</strong>
+                    </div>
+                    <div style={{ display: 'flex', justifyContent: 'space-between' }}>
+                      <span>Shipped / Transit</span>
+                      <strong className={styles.tabular}>{pipeline.shipped}</strong>
+                    </div>
+                    <div style={{ display: 'flex', justifyContent: 'space-between' }}>
+                      <span>Packing Hub</span>
+                      <strong className={styles.tabular}>{pipeline.packing}</strong>
+                    </div>
+                    <div style={{ display: 'flex', justifyContent: 'space-between' }}>
+                      <span>New Unfulfilled</span>
+                      <strong className={styles.tabular}>{pipeline.new}</strong>
+                    </div>
+                  </div>
+                </div>
+
+                {/* Conversion Funnel */}
+                <div className={styles.card}>
+                  <h3 style={{ margin: '0 0 12px', fontSize: '14px', fontWeight: 700 }}>Conversion Funnel</h3>
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: '8px', fontSize: '13px' }}>
+                    <div style={{ display: 'flex', justifyContent: 'space-between' }}>
+                      <span>Session to Product</span>
+                      <strong className={styles.tabular}>62.4%</strong>
+                    </div>
+                    <div style={{ display: 'flex', justifyContent: 'space-between' }}>
+                      <span>Product to Cart</span>
+                      <strong className={styles.tabular}>18.2%</strong>
+                    </div>
+                    <div style={{ display: 'flex', justifyContent: 'space-between' }}>
+                      <span>Cart to Checkout</span>
+                      <strong className={styles.tabular}>54.1%</strong>
+                    </div>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', color: '#10B981' }}>
+                      <span>Total Conversion</span>
+                      <strong className={styles.tabular}>3.68%</strong>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+          )}
+
+          {/* ══════════════════════════════════════════════════════════════
+              MODULE 7: SETTINGS (Anchored single scrollable page)
+             ══════════════════════════════════════════════════════════════ */}
+          {activeTab === 'settings' && (
+            <div style={{ maxWidth: '720px' }}>
+              <div style={{ marginBottom: '20px' }}>
+                <h2 style={{ margin: 0, fontSize: '20px', fontWeight: 800, letterSpacing: '-0.02em' }}>Store Settings</h2>
+                <span style={{ fontSize: '13px', color: 'var(--admin-muted)' }}>Storefront configuration and operational parameters</span>
+              </div>
+
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '24px' }}>
+                {/* Store Profile */}
+                <div className={styles.card}>
+                  <h3 style={{ margin: '0 0 14px', fontSize: '15px', fontWeight: 700 }}>Store Profile</h3>
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
+                    <div>
+                      <label style={{ fontSize: '12px', fontWeight: 600, color: 'var(--admin-muted)', display: 'block', marginBottom: '4px' }}>Store Name</label>
+                      <input type="text" defaultValue="Deen Drip Lagos" style={{ width: '100%', padding: '8px 12px', fontSize: '13px', borderRadius: '8px', border: '1px solid var(--admin-border)', backgroundColor: 'var(--admin-surface)', color: 'var(--admin-text)' }} />
+                    </div>
+                    <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px' }}>
+                      <div>
+                        <label style={{ fontSize: '12px', fontWeight: 600, color: 'var(--admin-muted)', display: 'block', marginBottom: '4px' }}>Operating Currency</label>
+                        <input type="text" disabled value="NGN (₦)" style={{ width: '100%', padding: '8px 12px', fontSize: '13px', borderRadius: '8px', border: '1px solid var(--admin-border)', backgroundColor: 'var(--admin-canvas)', color: 'var(--admin-muted)' }} />
+                      </div>
+                      <div>
+                        <label style={{ fontSize: '12px', fontWeight: 600, color: 'var(--admin-muted)', display: 'block', marginBottom: '4px' }}>Default Dispatch City</label>
+                        <input type="text" defaultValue="Lagos, Nigeria" style={{ width: '100%', padding: '8px 12px', fontSize: '13px', borderRadius: '8px', border: '1px solid var(--admin-border)', backgroundColor: 'var(--admin-surface)', color: 'var(--admin-text)' }} />
+                      </div>
+                    </div>
+                  </div>
+                </div>
+
+                {/* Email Dispatch Configuration */}
+                <div className={styles.card}>
+                  <h3 style={{ margin: '0 0 14px', fontSize: '15px', fontWeight: 700 }}>Live Transactional Email Service</h3>
+                  <p style={{ margin: '0 0 12px', fontSize: '13px', color: 'var(--admin-muted)' }}>
+                    Customer receipts and waybill dispatches send from <strong>Deen Drip &lt;orders@deendrip.shop&gt;</strong> authenticated via Resend DKIM/SPF.
+                  </p>
+                  <div style={{ background: 'var(--admin-canvas)', padding: '10px 14px', borderRadius: '8px', fontSize: '12px', color: '#10B981', fontWeight: 600 }}>
+                    ✓ Domain Verified & Active on deendrip.shop
+                  </div>
+                </div>
+
+                {/* Reset Store Data */}
+                <div className={styles.card} style={{ borderColor: 'rgba(239, 68, 68, 0.3)' }}>
+                  <h3 style={{ margin: '0 0 8px', fontSize: '15px', fontWeight: 700, color: '#EF4444' }}>Development Store Reset</h3>
+                  <p style={{ margin: '0 0 12px', fontSize: '13px', color: 'var(--admin-muted)' }}>
+                    Re-seed the in-memory/localStorage store with the 60 orders, 40 products, 80 customers, and 12-month analytics dataset.
+                  </p>
+                  <button
+                    onClick={() => {
+                      if (confirm('Re-seed the store with fresh sample data?')) {
+                        resetStore();
+                        loadAllData();
+                        showToast('Store reset to initial seed');
+                      }
+                    }}
+                    className={styles.btnSecondary}
+                    style={{ color: '#EF4444', borderColor: '#EF4444' }}
+                  >
+                    Reset & Re-Seed Dataset
+                  </button>
+                </div>
+              </div>
+            </div>
+          )}
+        </main>
+      </div>
+
+      {/* ── MOBILE BOTTOM NAVIGATION (<768px) ── */}
+      <nav className={styles.bottomNav}>
+        <button
+          onClick={() => setActiveTab('dashboard')}
+          className={`${styles.bottomNavItem} ${activeTab === 'dashboard' ? styles.bottomNavItemActive : ''}`}
+        >
+          <LayoutDashboard size={18} />
+          <span>Home</span>
+        </button>
+
+        <button
+          onClick={() => setActiveTab('orders')}
+          className={`${styles.bottomNavItem} ${activeTab === 'orders' ? styles.bottomNavItemActive : ''}`}
+        >
+          <ShoppingBag size={18} />
+          <span>Orders</span>
+        </button>
+
+        <button
+          onClick={() => setActiveTab('products')}
+          className={`${styles.bottomNavItem} ${activeTab === 'products' ? styles.bottomNavItemActive : ''}`}
+        >
+          <Package size={18} />
+          <span>Products</span>
+        </button>
+
+        <button
+          onClick={() => setActiveTab('customers')}
+          className={`${styles.bottomNavItem} ${activeTab === 'customers' ? styles.bottomNavItemActive : ''}`}
+        >
+          <Users size={18} />
+          <span>Customers</span>
+        </button>
+
+        <button
+          onClick={() => setCommandPaletteOpen(true)}
+          className={styles.bottomNavItem}
+        >
+          <Search size={18} />
+          <span>Search</span>
+        </button>
+      </nav>
+
+      {/* ── SIDE DRAWERS ── */}
+      <OrderDrawer
+        order={selectedOrder}
+        onClose={() => setSelectedOrder(null)}
+        onUpdateOrder={handleUpdateOrder}
+        onSimulateStep={handleSimulateStep}
+        onOpenEmailWithOrder={(ord) => {
+          setEmailTargetCustomer(ord);
+          setIsEmailComposerOpen(true);
+        }}
+      />
+
+      <ProductDrawer
+        product={selectedProduct}
+        isOpen={isProductDrawerOpen}
+        onClose={() => setIsProductDrawerOpen(false)}
+        onSave={handleSaveProduct}
+        onDelete={handleDeleteProduct}
+      />
+
+      <CustomerDrawer
+        customer={selectedCustomer}
+        orders={orders.filter(o => o.customerEmail.toLowerCase() === selectedCustomer?.email.toLowerCase())}
+        isOpen={isCustomerDrawerOpen}
+        onClose={() => setIsCustomerDrawerOpen(false)}
+        onOpenEmail={(cust) => {
+          setEmailTargetCustomer(cust);
+          setIsEmailComposerOpen(true);
+        }}
+        onSelectOrder={(ord) => setSelectedOrder(ord)}
+      />
+
+      <EmailComposerDrawer
+        isOpen={isEmailComposerOpen}
+        onClose={() => setIsEmailComposerOpen(false)}
+        templates={emailTemplates}
+        customers={customers}
+        initialRecipient={emailTargetCustomer}
+        onSentSuccess={(msg) => showToast(msg)}
+      />
+
+      {/* ── GLOBAL COMMAND PALETTE (⌘K) ── */}
+      <CommandPalette
+        open={commandPaletteOpen}
+        onOpenChange={setCommandPaletteOpen}
+        onNavigate={(tab) => setActiveTab(tab as NavTab)}
+        orders={orders}
+        products={products}
+        customers={customers}
+        onSelectOrder={(o) => setSelectedOrder(o)}
+        onSelectCustomer={(c) => { setSelectedCustomer(c); setIsCustomerDrawerOpen(true); }}
+        onOpenNewProduct={() => { setIsProductDrawerOpen(true); setSelectedProduct(null); }}
+        onOpenEmailComposer={() => setIsEmailComposerOpen(true)}
+      />
+
+      {/* ── KEYBOARD SHORTCUTS HELP MODAL (?) ── */}
+      {showKeyboardHelp && (
+        <div className={styles.drawerOverlay} onClick={(e) => { if (e.target === e.currentTarget) setShowKeyboardHelp(false); }}>
+          <div style={{ backgroundColor: 'var(--admin-surface)', borderRadius: '16px', maxWidth: '420px', width: '100%', margin: 'auto', padding: '24px', border: '1px solid var(--admin-border)', boxShadow: '0 20px 40px rgba(0,0,0,0.3)' }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '16px' }}>
+              <h3 style={{ margin: 0, fontSize: '16px', fontWeight: 700 }}>Keyboard Shortcuts</h3>
+              <button onClick={() => setShowKeyboardHelp(false)} style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--admin-muted)' }}>✕</button>
+            </div>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '10px', fontSize: '13px' }}>
+              <div style={{ display: 'flex', justifyContent: 'space-between' }}>
+                <span>Global Command Menu</span>
+                <kbd className={styles.kbd}>⌘K / Ctrl+K</kbd>
+              </div>
+              <div style={{ display: 'flex', justifyContent: 'space-between' }}>
+                <span>Quick Search</span>
+                <kbd className={styles.kbd}>/</kbd>
+              </div>
+              <div style={{ display: 'flex', justifyContent: 'space-between' }}>
+                <span>Add New Product</span>
+                <kbd className={styles.kbd}>N</kbd>
+              </div>
+              <div style={{ display: 'flex', justifyContent: 'space-between' }}>
+                <span>Go to Dashboard</span>
+                <kbd className={styles.kbd}>G then D</kbd>
+              </div>
+              <div style={{ display: 'flex', justifyContent: 'space-between' }}>
+                <span>Go to Orders</span>
+                <kbd className={styles.kbd}>G then O</kbd>
+              </div>
+              <div style={{ display: 'flex', justifyContent: 'space-between' }}>
+                <span>Go to Products</span>
+                <kbd className={styles.kbd}>G then P</kbd>
+              </div>
+              <div style={{ display: 'flex', justifyContent: 'space-between' }}>
+                <span>Go to Customers</span>
+                <kbd className={styles.kbd}>G then C</kbd>
+              </div>
+              <div style={{ display: 'flex', justifyContent: 'space-between' }}>
+                <span>Keyboard Help</span>
+                <kbd className={styles.kbd}>?</kbd>
+              </div>
+            </div>
           </div>
         </div>
       )}
-    </div>
-  );
-}
-
-// ──────────────────────────────────────────────────
-// Delivery Tab Component
-// ──────────────────────────────────────────────────
-
-function DeliveryTab({ onToast }: { onToast: (msg: string, type?: 'ok' | 'err') => void }) {
-  const [zones, setZones] = React.useState<any[]>([]);
-  const [loading, setLoading] = React.useState(true);
-  const [editingId, setEditingId] = React.useState<string | null>(null);
-  const [feeInput, setFeeInput] = React.useState('');
-  const [thresholdInput, setThresholdInput] = React.useState('');
-  const [saving, setSaving] = React.useState(false);
-
-  React.useEffect(() => {
-    fetch('/api/admin/delivery').then(r => r.json()).then(d => { setZones(d.zones || []); setLoading(false); });
-  }, []);
-
-  const startEdit = (zone: any) => {
-    setEditingId(zone.id);
-    setFeeInput(String(zone.feeKobo / 100));
-    setThresholdInput(zone.freeThresholdKobo !== null ? String(zone.freeThresholdKobo / 100) : '');
-  };
-
-  const saveEdit = async (zone: any) => {
-    setSaving(true);
-    const feeKobo = Math.round(parseFloat(feeInput || '0') * 100);
-    const freeThresholdKobo = thresholdInput ? Math.round(parseFloat(thresholdInput) * 100) : null;
-
-    const res = await fetch('/api/admin/delivery', {
-      method: 'PATCH',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ id: zone.id, feeKobo, freeThresholdKobo }),
-    });
-    if (res.ok) {
-      const d = await res.json();
-      setZones(d.zones || []);
-      setEditingId(null);
-      onToast('Delivery zone updated');
-    } else {
-      onToast('Failed to update zone', 'err');
-    }
-    setSaving(false);
-  };
-
-  if (loading) return <div style={{ padding: 'var(--space-8)', textAlign: 'center', color: 'var(--text-muted)' }}>Loading delivery zones…</div>;
-
-  return (
-    <div>
-      <p style={{ marginBottom: 'var(--space-4)', fontSize: '0.88rem', color: 'var(--text-secondary)' }}>
-        Configure delivery fees for each zone. Changes apply to all new orders immediately.
-        Fees shown in Naira (₦). Leave the free threshold blank to disable free delivery for that zone.
-      </p>
-      <div className="tableCard" style={{ border: '1px solid var(--border-light)', borderRadius: 'var(--radius-xs)', overflow: 'hidden', backgroundColor: 'var(--bg-card)' }}>
-        <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '0.85rem' }}>
-          <thead>
-            <tr style={{ backgroundColor: 'var(--bg-secondary)' }}>
-              <th style={{ padding: 'var(--space-4)', textAlign: 'left', fontWeight: 800, textTransform: 'uppercase', fontSize: '0.72rem', letterSpacing: '0.05em', color: 'var(--text-secondary)' }}>Zone</th>
-              <th style={{ padding: 'var(--space-4)', textAlign: 'left', fontWeight: 800, textTransform: 'uppercase', fontSize: '0.72rem', letterSpacing: '0.05em', color: 'var(--text-secondary)' }}>Delivery Fee (₦)</th>
-              <th style={{ padding: 'var(--space-4)', textAlign: 'left', fontWeight: 800, textTransform: 'uppercase', fontSize: '0.72rem', letterSpacing: '0.05em', color: 'var(--text-secondary)' }}>Free Threshold (₦)</th>
-              <th style={{ padding: 'var(--space-4)', textAlign: 'left', fontWeight: 800, textTransform: 'uppercase', fontSize: '0.72rem', letterSpacing: '0.05em', color: 'var(--text-secondary)' }}>Actions</th>
-            </tr>
-          </thead>
-          <tbody>
-            {zones.map(zone => (
-              <tr key={zone.id} style={{ borderTop: '1px solid var(--border-subtle)' }}>
-                <td style={{ padding: 'var(--space-4)' }}>
-                  <strong>{zone.zoneName}</strong>
-                  <div style={{ fontSize: '0.72rem', color: 'var(--text-muted)' }}>Match: {zone.stateMatch}</div>
-                  {!zone.isActive && <span className="badge badge-outline" style={{ marginTop: '0.25rem' }}>Inactive</span>}
-                </td>
-                <td style={{ padding: 'var(--space-4)' }}>
-                  {editingId === zone.id
-                    ? <input type="number" value={feeInput} onChange={e => setFeeInput(e.target.value)} min="0" step="100" style={{ width: '120px', padding: '0.35rem 0.5rem', fontSize: '0.85rem', border: '1px solid var(--border-light)', borderRadius: 'var(--radius-xs)', backgroundColor: 'var(--bg-card)', color: 'var(--text-primary)' }} />
-                    : <strong>₦{(zone.feeKobo / 100).toLocaleString()}</strong>
-                  }
-                </td>
-                <td style={{ padding: 'var(--space-4)' }}>
-                  {editingId === zone.id
-                    ? <input type="number" value={thresholdInput} onChange={e => setThresholdInput(e.target.value)} min="0" step="100" placeholder="No threshold" style={{ width: '140px', padding: '0.35rem 0.5rem', fontSize: '0.85rem', border: '1px solid var(--border-light)', borderRadius: 'var(--radius-xs)', backgroundColor: 'var(--bg-card)', color: 'var(--text-primary)' }} />
-                    : zone.freeThresholdKobo !== null ? <span style={{ color: '#10b981', fontWeight: 700 }}>₦{(zone.freeThresholdKobo / 100).toLocaleString()} → FREE</span> : <span style={{ color: 'var(--text-muted)' }}>No free threshold</span>
-                  }
-                </td>
-                <td style={{ padding: 'var(--space-4)' }}>
-                  {editingId === zone.id ? (
-                    <div style={{ display: 'flex', gap: 'var(--space-2)' }}>
-                      <button onClick={() => saveEdit(zone)} disabled={saving} className="btn btn-sm btn-sky">Save</button>
-                      <button onClick={() => setEditingId(null)} className="btn btn-sm btn-outline">Cancel</button>
-                    </div>
-                  ) : (
-                    <button onClick={() => startEdit(zone)} className="btn btn-sm btn-outline">Edit</button>
-                  )}
-                </td>
-              </tr>
-            ))}
-          </tbody>
-        </table>
-      </div>
-    </div>
-  );
-}
-
-// ──────────────────────────────────────────────────
-// Settings Tab Component
-// ──────────────────────────────────────────────────
-
-function SettingsTab({ onToast }: { onToast: (msg: string, type?: 'ok' | 'err') => void }) {
-  const [settings, setSettings] = React.useState<Record<string, string>>({});
-  const [loading, setLoading] = React.useState(true);
-  const [saving, setSaving] = React.useState(false);
-  const [form, setForm] = React.useState<Record<string, string>>({});
-
-  React.useEffect(() => {
-    fetch('/api/admin/settings').then(r => r.json()).then(d => {
-      setSettings(d.settings || {});
-      setForm(d.settings || {});
-      setLoading(false);
-    });
-  }, []);
-
-  const handleChange = (key: string, value: string) => {
-    setForm(prev => ({ ...prev, [key]: value }));
-  };
-
-  const handleSave = async () => {
-    setSaving(true);
-    const res = await fetch('/api/admin/settings', {
-      method: 'PATCH',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(form),
-    });
-    if (res.ok) {
-      const d = await res.json();
-      onToast(`Settings saved (${d.updated?.length || 0} updated)`);
-      setSettings(form);
-    } else {
-      onToast('Failed to save settings', 'err');
-    }
-    setSaving(false);
-  };
-
-  if (loading) return <div style={{ padding: 'var(--space-8)', textAlign: 'center', color: 'var(--text-muted)' }}>Loading settings…</div>;
-
-  const Field = ({ label, settingKey, type = 'text', placeholder = '' }: { label: string; settingKey: string; type?: string; placeholder?: string }) => (
-    <div style={{ display: 'flex', flexDirection: 'column', gap: '0.35rem' }}>
-      <label style={{ fontSize: '0.75rem', fontWeight: 800, textTransform: 'uppercase', letterSpacing: '0.05em', color: 'var(--text-secondary)' }}>{label}</label>
-      {type === 'textarea'
-        ? <textarea value={form[settingKey] || ''} onChange={e => handleChange(settingKey, e.target.value)} rows={3} placeholder={placeholder} style={{ padding: '0.6rem 0.75rem', fontSize: '0.85rem', border: '1px solid var(--border-light)', borderRadius: 'var(--radius-xs)', resize: 'vertical', backgroundColor: 'var(--bg-card)', color: 'var(--text-primary)', fontFamily: 'inherit' }} />
-        : <input type={type} value={form[settingKey] || ''} onChange={e => handleChange(settingKey, e.target.value)} placeholder={placeholder} style={{ padding: '0.6rem 0.75rem', fontSize: '0.85rem', border: '1px solid var(--border-light)', borderRadius: 'var(--radius-xs)', backgroundColor: 'var(--bg-card)', color: 'var(--text-primary)' }} />
-      }
-    </div>
-  );
-
-  return (
-    <div style={{ maxWidth: '640px' }}>
-      <div style={{ display: 'flex', flexDirection: 'column', gap: 'var(--space-5)', backgroundColor: 'var(--bg-card)', border: '1px solid var(--border-light)', borderRadius: 'var(--radius-xs)', padding: 'var(--space-6)' }}>
-        <h3 style={{ fontSize: '0.9rem', fontWeight: 800, textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: 'var(--space-2)' }}>Brand & Contact</h3>
-        <Field label="Store Name" settingKey="store_name" />
-        <Field label="Support Email" settingKey="support_email" type="email" placeholder="orders@deendrip.shop" />
-        <Field label="Support Phone" settingKey="support_phone" placeholder="+234 906 414 7689" />
-
-        <hr style={{ border: 'none', borderTop: '1px solid var(--border-light)', margin: '0' }} />
-        <h3 style={{ fontSize: '0.9rem', fontWeight: 800, textTransform: 'uppercase', letterSpacing: '0.05em' }}>Storefront Announcement Bar</h3>
-        <Field label="Announcement Bar Text" settingKey="announcement_bar" placeholder="FREE delivery on Lagos orders above ₦85,000" />
-        <div style={{ display: 'flex', flexDirection: 'column', gap: '0.35rem' }}>
-          <label style={{ fontSize: '0.75rem', fontWeight: 800, textTransform: 'uppercase', letterSpacing: '0.05em', color: 'var(--text-secondary)' }}>Announcement Bar Enabled</label>
-          <select value={form.announcement_bar_enabled || '1'} onChange={e => handleChange('announcement_bar_enabled', e.target.value)} style={{ padding: '0.6rem 0.75rem', fontSize: '0.85rem', border: '1px solid var(--border-light)', borderRadius: 'var(--radius-xs)', backgroundColor: 'var(--bg-card)', color: 'var(--text-primary)' }}>
-            <option value="1">Enabled</option>
-            <option value="0">Disabled</option>
-          </select>
-        </div>
-
-        <hr style={{ border: 'none', borderTop: '1px solid var(--border-light)', margin: '0' }} />
-        <h3 style={{ fontSize: '0.9rem', fontWeight: 800, textTransform: 'uppercase', letterSpacing: '0.05em' }}>Social Links</h3>
-        <Field label="Instagram URL" settingKey="instagram_url" placeholder="https://instagram.com/deendrip" />
-        <Field label="Twitter/X URL" settingKey="twitter_url" placeholder="https://twitter.com/deendrip" />
-
-        <button onClick={handleSave} disabled={saving} className="btn btn-sky" style={{ alignSelf: 'flex-start', marginTop: 'var(--space-2)' }}>
-          {saving ? 'Saving…' : 'Save All Settings'}
-        </button>
-      </div>
     </div>
   );
 }

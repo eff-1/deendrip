@@ -3,6 +3,7 @@
 import React, { useEffect } from 'react';
 import Link from 'next/link';
 import Image from 'next/image';
+import { usePathname } from 'next/navigation';
 import { useCart } from '@/context/CartContext';
 import { formatNaira } from '@/lib/formatters';
 import styles from './CartDrawer.module.css';
@@ -10,6 +11,10 @@ import styles from './CartDrawer.module.css';
 const FREE_SHIPPING_THRESHOLD_KOBO = 8500000; // ₦85,000
 
 export default function CartDrawer() {
+  const pathname = usePathname();
+  if (pathname?.startsWith('/admin')) {
+    return null;
+  }
   const { items, isCartOpen, setIsCartOpen, removeItem, updateQuantity, subtotalKobo, itemCount } = useCart();
 
   // Close on Escape key

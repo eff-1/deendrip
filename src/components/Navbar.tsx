@@ -12,6 +12,9 @@ import styles from './Navbar.module.css';
 
 export default function Navbar() {
   const pathname = usePathname();
+  if (pathname?.startsWith('/admin')) {
+    return null;
+  }
   const isHomePage = pathname === '/';
 
   const { itemCount, setIsCartOpen } = useCart();

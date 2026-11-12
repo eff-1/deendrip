@@ -24,8 +24,5 @@ export default async function AdminPage() {
     redirect('/admin/login');
   }
 
-  const orders = await getAllOrdersAsync();
-  const products = getProducts({ publishedOnly: false });
-
-  return <AdminDashboardClient orders={orders} products={products} adminName={admin.name} adminRole={admin.role} />;
+  return <AdminDashboardClient adminName={admin.name} adminRole={admin.role} />;
 }
