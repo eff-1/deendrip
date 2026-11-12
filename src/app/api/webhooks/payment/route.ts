@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server';
-import { getDb, updateOrderPayment } from '@/lib/db';
+import { getDb, updateOrderPayment, getOrderByReferenceAsync } from '@/lib/db';
 import { verifyWebhookSignature } from '@/lib/payment';
+import { sendOrderConfirmationEmail, sendAdminOrderAlertEmail } from '@/lib/email';
 
 export async function POST(request: Request) {
   try {
@@ -35,6 +36,11 @@ export async function POST(request: Request) {
 
       if (orderRef) {
         updateOrderPayment(orderRef, 'paid', paymentRef);
+        const updatedOrder = await getOrderByReferenceAsync(orderRef);
+        if (updatedOrder) {
+          sendOrderConfirmationEmail(updatedOrder).catch(err => console.error('Webhook confirmation email error:', err));
+          sendAdminOrderAlertEmail(updatedOrder).catch(err => console.error('Webhook admin alert error:', err));
+        }
       }
     }
 

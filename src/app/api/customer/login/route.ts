@@ -1,9 +1,21 @@
 import { NextResponse } from 'next/server';
 import { verifyCustomerLogin } from '@/lib/customer';
+import { checkRateLimit, createRateLimitResponse } from '@/lib/rateLimit';
+import { cleanPlainText } from '@/lib/sanitize';
 
 export async function POST(req: Request) {
   try {
-    const body = await req.json();
+    // 1. Rate Limiting: 6 login attempts per 5 minutes per IP
+    const rateCheck = checkRateLimit(req, 'customer-login', 6, 300);
+    if (!rateCheck.allowed) {
+      return createRateLimitResponse(rateCheck, 'Too many login attempts. For your security, please wait a few minutes before trying again.');
+    }
+
+    const body = await req.json().catch(() => null);
+    if (!body) {
+      return NextResponse.json({ error: 'Invalid request payload' }, { status: 400 });
+    }
+
     const { identifier, password } = body;
 
     if (!identifier || !password) {
@@ -13,7 +25,9 @@ export async function POST(req: Request) {
       );
     }
 
-    const customer = verifyCustomerLogin(identifier, password);
+    const cleanIdentifier = cleanPlainText(identifier, 100);
+
+    const customer = await verifyCustomerLogin(cleanIdentifier, String(password));
     if (!customer) {
       return NextResponse.json(
         { error: 'Invalid email/username or password. Please try again.' },

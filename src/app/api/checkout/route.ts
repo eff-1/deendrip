@@ -2,10 +2,22 @@ import { NextResponse } from 'next/server';
 import { validateAndCalculateOrder } from '@/lib/payment';
 import { createOrderWithItems } from '@/lib/db';
 import { generateOrderReference } from '@/lib/auth';
+import { checkRateLimit, createRateLimitResponse } from '@/lib/rateLimit';
+import { cleanPlainText, sanitizeEmail, sanitizePhone } from '@/lib/sanitize';
 
 export async function POST(request: Request) {
   try {
-    const body = await request.json();
+    // 1. Rate Limiting: max 12 order creations per 10 minutes per IP
+    const rateCheck = checkRateLimit(request, 'checkout-order', 12, 600);
+    if (!rateCheck.allowed) {
+      return createRateLimitResponse(rateCheck, 'Too many order requests. Please wait a moment before trying again.');
+    }
+
+    const body = await request.json().catch(() => null);
+    if (!body) {
+      return NextResponse.json({ error: 'Invalid request payload' }, { status: 400 });
+    }
+
     const {
       customerName,
       customerEmail,
@@ -16,24 +28,30 @@ export async function POST(request: Request) {
       items,
     } = body;
 
-    // Server-side field validation
-    if (!customerName || typeof customerName !== 'string' || customerName.trim().length < 2) {
+    // Strict sanitization & validation
+    const cleanName = cleanPlainText(customerName, 100);
+    if (!cleanName || cleanName.length < 2) {
       return NextResponse.json({ error: 'Please enter a valid full name' }, { status: 400 });
     }
 
-    if (!customerEmail || !/^\S+@\S+\.\S+$/.test(customerEmail)) {
+    const cleanMail = sanitizeEmail(customerEmail);
+    if (!cleanMail) {
       return NextResponse.json({ error: 'Please enter a valid email address' }, { status: 400 });
     }
 
-    if (!customerPhone || customerPhone.trim().length < 7) {
+    const cleanTel = sanitizePhone(customerPhone);
+    if (!cleanTel) {
       return NextResponse.json({ error: 'Please enter a valid phone number for delivery updates' }, { status: 400 });
     }
 
-    if (!deliveryAddress || deliveryAddress.trim().length < 5) {
+    const cleanAddr = cleanPlainText(deliveryAddress, 300);
+    if (!cleanAddr || cleanAddr.length < 5) {
       return NextResponse.json({ error: 'Please enter a complete street address' }, { status: 400 });
     }
 
-    if (!deliveryCity || !deliveryState) {
+    const cleanCity = cleanPlainText(deliveryCity, 100);
+    const cleanState = cleanPlainText(deliveryState, 100);
+    if (!cleanCity || !cleanState) {
       return NextResponse.json({ error: 'Please select both city and state' }, { status: 400 });
     }
 
@@ -41,8 +59,12 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: 'Your cart is empty' }, { status: 400 });
     }
 
+    if (items.length > 50) {
+      return NextResponse.json({ error: 'Cart item limit exceeded' }, { status: 400 });
+    }
+
     // Authoritative server calculation & stock check using exact rate cards
-    const calculation = validateAndCalculateOrder(items, deliveryState, deliveryCity, deliveryAddress);
+    const calculation = validateAndCalculateOrder(items, cleanState, cleanCity, cleanAddr);
 
     // Generate unique order reference
     const orderReference = generateOrderReference();
@@ -50,12 +72,12 @@ export async function POST(request: Request) {
     // Persist order with ACID transaction & stock deduction
     const order = createOrderWithItems({
       orderReference,
-      customerName: customerName.trim(),
-      customerEmail: customerEmail.trim().toLowerCase(),
-      customerPhone: customerPhone.trim(),
-      deliveryAddress: deliveryAddress.trim(),
-      deliveryCity: deliveryCity.trim(),
-      deliveryState: deliveryState.trim(),
+      customerName: cleanName,
+      customerEmail: cleanMail,
+      customerPhone: cleanTel,
+      deliveryAddress: cleanAddr,
+      deliveryCity: cleanCity,
+      deliveryState: cleanState,
       deliveryFeeKobo: calculation.deliveryFeeKobo,
       subtotalKobo: calculation.subtotalKobo,
       totalKobo: calculation.totalKobo,

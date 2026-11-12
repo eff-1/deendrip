@@ -1,4 +1,5 @@
 import { getDb } from './db';
+import { getTursoClient } from './turso';
 import { hashPassword, verifyPassword } from './auth';
 import type { Customer } from './types';
 
@@ -32,7 +33,7 @@ function rowToCustomer(row: CustomerRow): Customer {
   };
 }
 
-export function createCustomer(data: {
+export async function createCustomer(data: {
   username: string;
   fullName: string;
   email: string;
@@ -41,82 +42,182 @@ export function createCustomer(data: {
   city: string;
   state: string;
   password: string;
-}): Customer {
-  const db = getDb();
+}): Promise<Customer> {
   const id = `cust_${Date.now()}_${Math.random().toString(36).substring(2, 7)}`;
   const now = new Date().toISOString();
   const { hash, salt } = hashPassword(data.password);
+  const cleanUsername = data.username.trim().toLowerCase();
+  const cleanEmail = data.email.trim().toLowerCase();
+  const cleanName = data.fullName.trim();
+  const cleanPhone = data.phone.trim();
+  const cleanAddress = data.streetAddress.trim();
+  const cleanCity = data.city.trim();
+  const cleanState = data.state.trim();
 
-  db.prepare(`
-    INSERT INTO customers (id, username, full_name, email, phone, street_address, city, state, password_hash, salt, created_at, updated_at)
-    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-  `).run(
-    id,
-    data.username.trim().toLowerCase(),
-    data.fullName.trim(),
-    data.email.trim().toLowerCase(),
-    data.phone.trim(),
-    data.streetAddress.trim(),
-    data.city.trim(),
-    data.state.trim(),
-    hash,
-    salt,
-    now,
-    now
-  );
+  const turso = getTursoClient();
+  if (turso) {
+    await turso.execute({
+      sql: `INSERT INTO customers (id, username, full_name, email, phone, street_address, city, state, password_hash, salt, created_at, updated_at)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+      args: [
+        id,
+        cleanUsername,
+        cleanName,
+        cleanEmail,
+        cleanPhone,
+        cleanAddress,
+        cleanCity,
+        cleanState,
+        hash,
+        salt,
+        now,
+        now,
+      ],
+    });
+  } else {
+    const db = getDb();
+    db.prepare(`
+      INSERT INTO customers (id, username, full_name, email, phone, street_address, city, state, password_hash, salt, created_at, updated_at)
+      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+    `).run(
+      id,
+      cleanUsername,
+      cleanName,
+      cleanEmail,
+      cleanPhone,
+      cleanAddress,
+      cleanCity,
+      cleanState,
+      hash,
+      salt,
+      now,
+      now
+    );
+  }
 
   return {
     id,
-    username: data.username.trim().toLowerCase(),
-    fullName: data.fullName.trim(),
-    email: data.email.trim().toLowerCase(),
-    phone: data.phone.trim(),
-    streetAddress: data.streetAddress.trim(),
-    city: data.city.trim(),
-    state: data.state.trim(),
+    username: cleanUsername,
+    fullName: cleanName,
+    email: cleanEmail,
+    phone: cleanPhone,
+    streetAddress: cleanAddress,
+    city: cleanCity,
+    state: cleanState,
     createdAt: now,
     updatedAt: now,
   };
 }
 
-export function getCustomerById(id: string): Customer | null {
+export async function getCustomerById(id: string): Promise<Customer | null> {
+  const turso = getTursoClient();
+  if (turso) {
+    const res = await turso.execute({
+      sql: 'SELECT * FROM customers WHERE id = ?',
+      args: [id],
+    });
+    if (res.rows.length === 0) return null;
+    return rowToCustomer(res.rows[0] as unknown as CustomerRow);
+  }
+
   const db = getDb();
   const row = db.prepare('SELECT * FROM customers WHERE id = ?').get(id) as CustomerRow | undefined;
   return row ? rowToCustomer(row) : null;
 }
 
-export function getCustomerByEmail(email: string): Customer | null {
+export async function getCustomerByEmail(email: string): Promise<Customer | null> {
+  const clean = email.trim().toLowerCase();
+  const turso = getTursoClient();
+  if (turso) {
+    const res = await turso.execute({
+      sql: 'SELECT * FROM customers WHERE LOWER(email) = LOWER(?)',
+      args: [clean],
+    });
+    if (res.rows.length === 0) return null;
+    return rowToCustomer(res.rows[0] as unknown as CustomerRow);
+  }
+
   const db = getDb();
-  const row = db.prepare('SELECT * FROM customers WHERE LOWER(email) = LOWER(?)').get(email.trim()) as CustomerRow | undefined;
+  const row = db.prepare('SELECT * FROM customers WHERE LOWER(email) = LOWER(?)').get(clean) as CustomerRow | undefined;
   return row ? rowToCustomer(row) : null;
 }
 
-export function getCustomerByUsername(username: string): Customer | null {
+export async function getCustomerByUsername(username: string): Promise<Customer | null> {
+  const clean = username.trim().toLowerCase();
+  const turso = getTursoClient();
+  if (turso) {
+    const res = await turso.execute({
+      sql: 'SELECT * FROM customers WHERE LOWER(username) = LOWER(?)',
+      args: [clean],
+    });
+    if (res.rows.length === 0) return null;
+    return rowToCustomer(res.rows[0] as unknown as CustomerRow);
+  }
+
   const db = getDb();
-  const row = db.prepare('SELECT * FROM customers WHERE LOWER(username) = LOWER(?)').get(username.trim()) as CustomerRow | undefined;
+  const row = db.prepare('SELECT * FROM customers WHERE LOWER(username) = LOWER(?)').get(clean) as CustomerRow | undefined;
   return row ? rowToCustomer(row) : null;
 }
 
-export function verifyCustomerLogin(identifier: string, password: string): Customer | null {
-  const db = getDb();
+export async function verifyCustomerLogin(identifier: string, password: string): Promise<Customer | null> {
   const clean = identifier.trim().toLowerCase();
-  const row = db.prepare('SELECT * FROM customers WHERE LOWER(email) = ? OR LOWER(username) = ?').get(clean, clean) as CustomerRow | undefined;
+  let row: CustomerRow | undefined;
+
+  const turso = getTursoClient();
+  if (turso) {
+    const res = await turso.execute({
+      sql: 'SELECT * FROM customers WHERE LOWER(email) = ? OR LOWER(username) = ?',
+      args: [clean, clean],
+    });
+    if (res.rows.length > 0) {
+      row = res.rows[0] as unknown as CustomerRow;
+    }
+  } else {
+    const db = getDb();
+    row = db.prepare('SELECT * FROM customers WHERE LOWER(email) = ? OR LOWER(username) = ?').get(clean, clean) as CustomerRow | undefined;
+  }
+
   if (!row) return null;
   const isValid = verifyPassword(password, row.password_hash, row.salt);
   if (!isValid) return null;
   return rowToCustomer(row);
 }
 
-export function updateCustomerAddress(
+export async function updateCustomerAddress(
   id: string,
   address: { streetAddress: string; city: string; state: string; phone?: string }
-): boolean {
-  const db = getDb();
+): Promise<boolean> {
   const now = new Date().toISOString();
+  const turso = getTursoClient();
+  if (turso) {
+    const res = await turso.execute({
+      sql: `UPDATE customers
+            SET street_address = ?, city = ?, state = ?, phone = COALESCE(?, phone), updated_at = ?
+            WHERE id = ?`,
+      args: [
+        address.streetAddress.trim(),
+        address.city.trim(),
+        address.state.trim(),
+        address.phone?.trim() ?? null,
+        now,
+        id,
+      ],
+    });
+    return res.rowsAffected > 0;
+  }
+
+  const db = getDb();
   const res = db.prepare(`
     UPDATE customers
     SET street_address = ?, city = ?, state = ?, phone = COALESCE(?, phone), updated_at = ?
     WHERE id = ?
-  `).run(address.streetAddress.trim(), address.city.trim(), address.state.trim(), address.phone?.trim() ?? null, now, id);
+  `).run(
+    address.streetAddress.trim(),
+    address.city.trim(),
+    address.state.trim(),
+    address.phone?.trim() ?? null,
+    now,
+    id
+  );
   return res.changes > 0;
 }

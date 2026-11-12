@@ -5,6 +5,7 @@ import fs from 'node:fs';
 import { hashPassword, verifyPassword } from './auth';
 import type { Product, ProductVariant, ProductImage, Order, OrderItem, Category, PaymentStatus, FulfillmentStatus, Customer } from './types';
 import { calculateOrderShipping } from './shipping';
+import { getTursoClient } from './turso';
 
 let dbInstance: DatabaseSync | null = null;
 
@@ -199,6 +200,27 @@ function initSchema(db: DatabaseSync) {
       updated_at TEXT
     );
 
+    CREATE TABLE IF NOT EXISTS contact_inquiries (
+      id TEXT PRIMARY KEY,
+      name TEXT NOT NULL,
+      email TEXT NOT NULL,
+      order_ref TEXT,
+      message TEXT NOT NULL,
+      created_at TEXT NOT NULL
+    );
+
+    CREATE TABLE IF NOT EXISTS email_logs (
+      id TEXT PRIMARY KEY,
+      recipient TEXT NOT NULL,
+      subject TEXT NOT NULL,
+      email_type TEXT NOT NULL,
+      order_reference TEXT,
+      status TEXT NOT NULL,
+      provider TEXT NOT NULL,
+      error_message TEXT,
+      created_at TEXT NOT NULL
+    );
+
     CREATE INDEX IF NOT EXISTS idx_customers_email ON customers(email);
     CREATE INDEX IF NOT EXISTS idx_customers_username ON customers(username);
     CREATE INDEX IF NOT EXISTS idx_products_category ON products(category);
@@ -208,6 +230,7 @@ function initSchema(db: DatabaseSync) {
     CREATE INDEX IF NOT EXISTS idx_orders_ref ON orders(order_reference);
     CREATE INDEX IF NOT EXISTS idx_orders_email ON orders(customer_email);
     CREATE INDEX IF NOT EXISTS idx_orders_status ON orders(payment_status, fulfillment_status);
+    CREATE INDEX IF NOT EXISTS idx_email_logs_ref ON email_logs(order_reference);
     CREATE INDEX IF NOT EXISTS idx_sessions_token ON admin_sessions(token);
   `);
 
@@ -803,6 +826,54 @@ export function createOrderWithItems(orderData: {
 
     db.exec('COMMIT;');
 
+    // Sync order to Turso cloud database
+    const turso = getTursoClient();
+    if (turso) {
+      turso.execute({
+        sql: `INSERT OR REPLACE INTO orders (
+          id, order_reference, customer_name, customer_email, customer_phone,
+          delivery_address, delivery_city, delivery_state, delivery_fee_kobo,
+          subtotal_kobo, total_kobo, payment_status, fulfillment_status, created_at, updated_at
+        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'pending', 'pending', ?, ?)`,
+        args: [
+          orderId,
+          orderData.orderReference,
+          orderData.customerName,
+          orderData.customerEmail,
+          orderData.customerPhone,
+          orderData.deliveryAddress,
+          orderData.deliveryCity,
+          orderData.deliveryState,
+          orderData.deliveryFeeKobo,
+          orderData.subtotalKobo,
+          orderData.totalKobo,
+          now,
+          now
+        ]
+      }).catch(err => console.error('Turso order sync error:', err));
+
+      for (let i = 0; i < orderData.items.length; i++) {
+        const it = orderData.items[i];
+        turso.execute({
+          sql: `INSERT OR REPLACE INTO order_items (
+            id, order_id, product_id, variant_id, product_name_snapshot,
+            variant_name_snapshot, unit_price_kobo_snapshot, quantity, subtotal_kobo
+          ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+          args: [
+            `item-${orderId}-${i + 1}`,
+            orderId,
+            it.productId,
+            it.variantId,
+            it.productNameSnapshot,
+            it.variantNameSnapshot,
+            it.unitPriceKoboSnapshot,
+            it.quantity,
+            it.subtotalKobo
+          ]
+        }).catch(err => console.error('Turso order_item sync error:', err));
+      }
+    }
+
     return getOrderByReference(orderData.orderReference)!;
   } catch (err) {
     db.exec('ROLLBACK;');
@@ -855,6 +926,71 @@ export function getOrderByReference(orderRef: string): Order | null {
   if (!r) return null;
   const itemRows = db.prepare('SELECT * FROM order_items WHERE order_id = ?').all(r.id) as any[];
   return rowToOrder(r, rowsToItems(itemRows));
+}
+
+export async function getOrderByReferenceAsync(orderRef: string): Promise<Order | null> {
+  // 1. Check local cache first
+  const local = getOrderByReference(orderRef);
+  if (local) return local;
+
+  // 2. Fall back to Turso cloud database
+  const turso = getTursoClient();
+  if (!turso) return null;
+
+  try {
+    const res = await turso.execute({
+      sql: 'SELECT * FROM orders WHERE order_reference = ?',
+      args: [orderRef],
+    });
+
+    if (res.rows.length === 0) return null;
+    const r = res.rows[0];
+
+    const itemsRes = await turso.execute({
+      sql: 'SELECT * FROM order_items WHERE order_id = ?',
+      args: [r.id],
+    });
+
+    const items = itemsRes.rows.map(it => ({
+      id: String(it.id),
+      orderId: String(it.order_id),
+      productId: String(it.product_id),
+      variantId: String(it.variant_id),
+      productNameSnapshot: String(it.product_name_snapshot),
+      variantNameSnapshot: String(it.variant_name_snapshot),
+      unitPriceKoboSnapshot: Number(it.unit_price_kobo_snapshot),
+      quantity: Number(it.quantity),
+      subtotalKobo: Number(it.subtotal_kobo),
+    }));
+
+    const order = rowToOrder(r, items);
+
+    // Warm local cache so subsequent sync reads are instant
+    try {
+      const db = getDb();
+      db.prepare(`
+        INSERT OR REPLACE INTO orders (
+          id, order_reference, customer_name, customer_email, customer_phone,
+          delivery_address, delivery_city, delivery_state, delivery_fee_kobo,
+          subtotal_kobo, total_kobo, payment_status, fulfillment_status,
+          payment_reference, tracking_reference, internal_notes, paid_at, created_at, updated_at
+        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+      `).run(
+        order.id, order.orderReference, order.customerName, order.customerEmail, order.customerPhone,
+        order.deliveryAddress, order.deliveryCity, order.deliveryState, order.deliveryFeeKobo,
+        order.subtotalKobo, order.totalKobo, order.paymentStatus, order.fulfillmentStatus,
+        order.paymentReference || null, order.trackingReference || null, order.internalNotes || null,
+        order.paidAt || null, order.createdAt, order.updatedAt || null
+      );
+    } catch {
+      // Ignore cache write errors
+    }
+
+    return order;
+  } catch (err) {
+    console.error('Turso getOrderByReferenceAsync error:', err);
+    return null;
+  }
 }
 
 export function getOrderById(id: string): Order | null {
@@ -941,6 +1077,17 @@ export function updateOrderPayment(orderRef: string, paymentStatus: PaymentStatu
     SET payment_status = ?, payment_reference = COALESCE(?, payment_reference), paid_at = CASE WHEN ? = 'paid' THEN ? ELSE paid_at END, updated_at = ?
     WHERE order_reference = ?
   `).run(paymentStatus, paymentRef || null, paymentStatus, now, now, orderRef);
+
+  const turso = getTursoClient();
+  if (turso) {
+    turso.execute({
+      sql: `UPDATE orders 
+            SET payment_status = ?, payment_reference = COALESCE(?, payment_reference), paid_at = CASE WHEN ? = 'paid' THEN ? ELSE paid_at END, updated_at = ?
+            WHERE order_reference = ?`,
+      args: [paymentStatus, paymentRef || null, paymentStatus, now, now, orderRef]
+    }).catch(err => console.error('Turso payment update sync error:', err));
+  }
+
   return res.changes > 0;
 }
 
@@ -951,6 +1098,16 @@ export function updateOrderFulfillment(orderRef: string, fulfillmentStatus: Fulf
     UPDATE orders SET fulfillment_status = ?, tracking_reference = COALESCE(?, tracking_reference), updated_at = ?
     WHERE order_reference = ?
   `).run(fulfillmentStatus, trackingRef || null, now, orderRef);
+
+  const turso = getTursoClient();
+  if (turso) {
+    turso.execute({
+      sql: `UPDATE orders SET fulfillment_status = ?, tracking_reference = COALESCE(?, tracking_reference), updated_at = ?
+            WHERE order_reference = ?`,
+      args: [fulfillmentStatus, trackingRef || null, now, orderRef]
+    }).catch(err => console.error('Turso fulfillment update sync error:', err));
+  }
+
   return res.changes > 0;
 }
 
