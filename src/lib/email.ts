@@ -3,9 +3,42 @@ import { formatNaira } from './formatters';
 import { getTursoClient } from './turso';
 import { getDb } from './db';
 import nodemailer from 'nodemailer';
+import fs from 'node:fs';
+import path from 'node:path';
 
 const STORE_OWNER_EMAIL = process.env.STORE_NOTIFICATION_EMAIL || 'deendripclothing@gmail.com';
-const FROM_EMAIL = process.env.RESEND_FROM_EMAIL || 'Deen Drip <onboarding@resend.dev>';
+
+function getEmailConfig() {
+  let apiKey = process.env.RESEND_API_KEY;
+  let fromEmail = process.env.RESEND_FROM_EMAIL;
+  let storeOwner = process.env.STORE_NOTIFICATION_EMAIL || 'deendripclothing@gmail.com';
+
+  if (!apiKey || !fromEmail) {
+    try {
+      const envPath = path.join(process.cwd(), '.env.local');
+      if (fs.existsSync(envPath)) {
+        const content = fs.readFileSync(envPath, 'utf8');
+        for (const line of content.split('\n')) {
+          const trimmed = line.trim();
+          if (trimmed.startsWith('RESEND_API_KEY=')) {
+            apiKey = apiKey || trimmed.slice('RESEND_API_KEY='.length).trim().replace(/^["']|["']$/g, '');
+          }
+          if (trimmed.startsWith('RESEND_FROM_EMAIL=')) {
+            fromEmail = fromEmail || trimmed.slice('RESEND_FROM_EMAIL='.length).trim().replace(/^["']|["']$/g, '');
+          }
+        }
+      }
+    } catch {
+      // Ignore read errors
+    }
+  }
+
+  return {
+    apiKey,
+    fromEmail: fromEmail || 'Deen Drip <onboarding@resend.dev>',
+    storeOwner,
+  };
+}
 
 export interface SendEmailParams {
   to: string | string[];
@@ -30,7 +63,7 @@ export interface EmailLogEntry {
 /**
  * Universal Email Dispatcher:
  * 1. If RESEND_API_KEY is configured, sends via Resend REST API
- * 2. If SMTP_PASS / EMAIL_SERVER_PASSWORD is configured, sends via Nodemailer (Gmail App Password, Brevo, AWS SES, etc.)
+ * 2. If SMTP variables are configured, sends via Nodemailer
  * 3. If no credentials configured yet, logs simulation safely
  * 4. Logs every email to Turso Cloud & Local Database for audit trails
  */
@@ -44,19 +77,19 @@ export async function sendEmail({
   const recipientStr = Array.isArray(to) ? to.join(', ') : to;
   const now = new Date().toISOString();
   const logId = `eml_${Date.now()}_${Math.random().toString(36).substring(2, 7)}`;
+  const config = getEmailConfig();
 
   // 1. Try Resend API first if RESEND_API_KEY is present
-  const resendApiKey = process.env.RESEND_API_KEY;
-  if (resendApiKey) {
+  if (config.apiKey) {
     try {
       const res = await fetch('https://api.resend.com/emails', {
         method: 'POST',
         headers: {
-          'Authorization': `Bearer ${resendApiKey}`,
+          'Authorization': `Bearer ${config.apiKey}`,
           'Content-Type': 'application/json',
         },
         body: JSON.stringify({
-          from: FROM_EMAIL,
+          from: config.fromEmail,
           to: Array.isArray(to) ? to : [to],
           subject,
           html,
@@ -80,11 +113,10 @@ export async function sendEmail({
         return { success: true, provider: 'resend' };
       } else {
         const errorMsg = data.message || JSON.stringify(data);
-        console.warn(`Resend failed, checking SMTP fallback: ${errorMsg}`);
-        // If Resend failed, don't return yet; attempt SMTP if configured
+        console.warn(`Resend response warning: ${errorMsg}`);
       }
     } catch (err: unknown) {
-      console.warn('Resend fetch failed, checking SMTP fallback:', err);
+      console.warn('Resend fetch error:', err);
     }
   }
 
