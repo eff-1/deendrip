@@ -5,7 +5,7 @@ import { getDb } from './db';
 import nodemailer from 'nodemailer';
 
 const STORE_OWNER_EMAIL = process.env.STORE_NOTIFICATION_EMAIL || 'deendripclothing@gmail.com';
-const FROM_EMAIL = process.env.RESEND_FROM_EMAIL || process.env.SMTP_FROM || 'Deen Drip <deendripclothing@gmail.com>';
+const FROM_EMAIL = process.env.RESEND_FROM_EMAIL || 'Deen Drip <onboarding@resend.dev>';
 
 export interface SendEmailParams {
   to: string | string[];
@@ -56,7 +56,7 @@ export async function sendEmail({
           'Content-Type': 'application/json',
         },
         body: JSON.stringify({
-          from: FROM_EMAIL.includes('@resend.dev') ? FROM_EMAIL : 'Deen Drip <onboarding@resend.dev>',
+          from: FROM_EMAIL,
           to: Array.isArray(to) ? to : [to],
           subject,
           html,
