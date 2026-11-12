@@ -29,15 +29,15 @@ export default function AdminLoginPage() {
         body: JSON.stringify({ email: email.trim().toLowerCase(), password }),
       });
 
-      const data = await res.json();
-      if (!res.ok) {
-        throw new Error(data.error || 'Login failed');
+      const data = await res.json().catch(() => null);
+      if (!res.ok || !data?.success) {
+        throw new Error(data?.error || 'Authentication failed. Please check your credentials.');
       }
 
-      router.push('/admin');
-      router.refresh();
+      // Hard redirect ensures the browser attaches the newly issued HTTP-only session cookie
+      window.location.href = '/admin';
     } catch (err: unknown) {
-      setError(err instanceof Error ? err.message : 'Invalid credentials');
+      setError(err instanceof Error ? err.message : 'Invalid email or password');
       setLoading(false);
     }
   };

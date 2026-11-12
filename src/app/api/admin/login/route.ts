@@ -99,17 +99,10 @@ export async function POST(request: Request) {
     createAdminSession(admin.id, token);
     logAdminAction(admin.id, admin.email, 'LOGIN', 'session');
 
-    // Set secure HTTP-only cookie
-    const cookieStore = await cookies();
-    cookieStore.set('deendrip_admin_token', token, {
-      httpOnly: true,
-      secure: process.env.NODE_ENV === 'production',
-      sameSite: 'lax',
-      path: '/',
-      maxAge: 60 * 60 * 24 * 7, // 7 days
-    });
+    const isLocalhost = request.url.includes('localhost') || request.url.includes('127.0.0.1');
+    const isProduction = process.env.NODE_ENV === 'production' && !isLocalhost;
 
-    return NextResponse.json({
+    const response = NextResponse.json({
       success: true,
       admin: {
         id: admin.id,
@@ -118,6 +111,16 @@ export async function POST(request: Request) {
         role: admin.role,
       },
     });
+
+    response.cookies.set('deendrip_admin_token', token, {
+      httpOnly: true,
+      secure: isProduction,
+      sameSite: 'lax',
+      path: '/',
+      maxAge: 60 * 60 * 24 * 7, // 7 days
+    });
+
+    return response;
   } catch (error: unknown) {
     const msg = error instanceof Error ? error.message : 'Login failed';
     return NextResponse.json({ error: msg }, { status: 500 });
