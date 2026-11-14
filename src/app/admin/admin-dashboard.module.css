@@ -105,11 +105,20 @@
 
 .navSection {
   flex: 1;
-  padding: 12px 8px;
+  padding: 14px 10px;
   overflow-y: auto;
   display: flex;
   flex-direction: column;
-  gap: 3px;
+  gap: 4px;
+}
+
+.navGroupLabel {
+  font-size: 10px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  color: var(--admin-muted);
+  padding: 12px 10px 4px 10px;
 }
 
 .navItem {
@@ -151,12 +160,81 @@
   color: var(--admin-sky-700);
 }
 
+.storeStatusCard {
+  margin: 10px 10px 8px 10px;
+  padding: 12px;
+  border-radius: var(--admin-radius-control);
+  background-color: var(--admin-canvas);
+  border: 1px solid var(--admin-border);
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.statusPulse {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background-color: #10B981;
+  box-shadow: 0 0 6px rgba(16, 185, 129, 0.7);
+  display: inline-block;
+  animation: adminPulse 2s infinite ease-in-out;
+}
+
+@keyframes adminPulse {
+  0% { transform: scale(0.95); opacity: 0.8; }
+  50% { transform: scale(1.15); opacity: 1; }
+  100% { transform: scale(0.95); opacity: 0.8; }
+}
+
+.viewStoreBtn {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 7px 10px;
+  background-color: var(--admin-surface);
+  border: 1px solid var(--admin-border);
+  border-radius: 8px;
+  font-size: 11px;
+  font-weight: 600;
+  color: var(--admin-text);
+  text-decoration: none;
+  transition: all var(--admin-transition);
+}
+
+.viewStoreBtn:hover {
+  border-color: var(--admin-sky-500);
+  color: var(--admin-sky-500);
+}
+
 .sidebarFooter {
-  padding: 12px 16px;
+  padding: 12px 14px;
   border-top: 1px solid var(--admin-border);
   display: flex;
   flex-direction: column;
   gap: 8px;
+}
+
+.adminProfileWrap {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 4px 0 2px 0;
+}
+
+.adminAvatar {
+  width: 28px;
+  height: 28px;
+  border-radius: 50%;
+  background-color: var(--admin-sky-100);
+  color: var(--admin-sky-700);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-weight: 700;
+  font-size: 12px;
+  flex-shrink: 0;
+  border: 1px solid var(--admin-border);
 }
 
 /* Main Layout Area - Independent scroll viewport with sidebar offset */

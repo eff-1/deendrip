@@ -340,8 +340,10 @@ export default function AdminDashboardClient({ adminName, adminRole }: AdminDash
         </div>
 
         <nav className={styles.navSection}>
+          {/* Group 1: Core Commerce */}
+          {!sidebarCollapsed && <div className={styles.navGroupLabel}>Core Commerce</div>}
           <button
-            onClick={() => setActiveTab('dashboard')}
+            onClick={() => { setActiveTab('dashboard'); }}
             className={`${styles.navItem} ${activeTab === 'dashboard' ? styles.navItemActive : ''}`}
           >
             <LayoutDashboard size={18} />
@@ -349,8 +351,8 @@ export default function AdminDashboardClient({ adminName, adminRole }: AdminDash
           </button>
 
           <button
-            onClick={() => setActiveTab('orders')}
-            className={`${styles.navItem} ${activeTab === 'orders' ? styles.navItemActive : ''}`}
+            onClick={() => { setActiveTab('orders'); setOrderStatusFilter('all'); }}
+            className={`${styles.navItem} ${activeTab === 'orders' && orderStatusFilter === 'all' ? styles.navItemActive : ''}`}
           >
             <ShoppingBag size={18} />
             {!sidebarCollapsed && <span>Orders</span>}
@@ -362,7 +364,8 @@ export default function AdminDashboardClient({ adminName, adminRole }: AdminDash
             className={`${styles.navItem} ${activeTab === 'products' ? styles.navItemActive : ''}`}
           >
             <Package size={18} />
-            {!sidebarCollapsed && <span>Products</span>}
+            {!sidebarCollapsed && <span>Products & Drops</span>}
+            {!sidebarCollapsed && <span style={{ marginLeft: 'auto', fontSize: '11px', color: 'var(--admin-muted)' }}>{products.length}</span>}
           </button>
 
           <button
@@ -373,12 +376,28 @@ export default function AdminDashboardClient({ adminName, adminRole }: AdminDash
             {!sidebarCollapsed && <span>Customers</span>}
           </button>
 
+          {/* Group 2: Operations & Logistics */}
+          {!sidebarCollapsed && <div className={styles.navGroupLabel}>Operations & Logistics</div>}
+          <button
+            onClick={() => { setActiveTab('orders'); setOrderStatusFilter('shipped'); }}
+            className={`${styles.navItem} ${activeTab === 'orders' && orderStatusFilter === 'shipped' ? styles.navItemActive : ''}`}
+            title="View dispatched orders and courier waybills"
+          >
+            <Truck size={18} />
+            {!sidebarCollapsed && <span>Dispatch & Waybills</span>}
+            {!sidebarCollapsed && pipeline.shipped > 0 && (
+              <span className={styles.navBadge} style={{ backgroundColor: 'rgba(56, 189, 248, 0.15)', color: '#0284C7' }}>
+                {pipeline.shipped}
+              </span>
+            )}
+          </button>
+
           <button
             onClick={() => setActiveTab('email')}
             className={`${styles.navItem} ${activeTab === 'email' ? styles.navItemActive : ''}`}
           >
             <Mail size={18} />
-            {!sidebarCollapsed && <span>Email & Follow-ups</span>}
+            {!sidebarCollapsed && <span>Email & Comms</span>}
             {!sidebarCollapsed && dueFollowUps.length > 0 && <span className={styles.navBadge}>{dueFollowUps.length}</span>}
           </button>
 
@@ -387,47 +406,88 @@ export default function AdminDashboardClient({ adminName, adminRole }: AdminDash
             className={`${styles.navItem} ${activeTab === 'analytics' ? styles.navItemActive : ''}`}
           >
             <BarChart3 size={18} />
-            {!sidebarCollapsed && <span>Analytics</span>}
+            {!sidebarCollapsed && <span>Sales Analytics</span>}
           </button>
 
+          {/* Group 3: System & Store */}
+          {!sidebarCollapsed && <div className={styles.navGroupLabel}>System & Store</div>}
           <button
             onClick={() => setActiveTab('settings')}
             className={`${styles.navItem} ${activeTab === 'settings' ? styles.navItemActive : ''}`}
           >
             <Settings size={18} />
-            {!sidebarCollapsed && <span>Settings</span>}
+            {!sidebarCollapsed && <span>Admin Settings</span>}
           </button>
         </nav>
 
+        {/* Live Storefront Status Card */}
+        {!sidebarCollapsed && (
+          <div className={styles.storeStatusCard}>
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                <span className={styles.statusPulse} />
+                <span style={{ fontSize: '11px', fontWeight: 700, letterSpacing: '0.04em' }}>STORE ONLINE</span>
+              </div>
+              <span style={{ fontSize: '10px', color: 'var(--admin-muted)', fontWeight: 600 }}>Turso Live</span>
+            </div>
+            <a
+              href="/"
+              target="_blank"
+              rel="noopener noreferrer"
+              className={styles.viewStoreBtn}
+              title="Open public storefront in new tab"
+            >
+              <span>View Live Storefront</span>
+              <ExternalLink size={13} />
+            </a>
+          </div>
+        )}
+
+        {/* Sidebar Footer with Admin Profile & Controls */}
         <div className={styles.sidebarFooter}>
-          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+          {!sidebarCollapsed && (
+            <div className={styles.adminProfileWrap}>
+              <div className={styles.adminAvatar}>
+                {(adminName || 'A').charAt(0).toUpperCase()}
+              </div>
+              <div style={{ flex: 1, minWidth: 0, lineHeight: 1.2 }}>
+                <div style={{ fontSize: '12px', fontWeight: 700, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                  {adminName}
+                </div>
+                <div style={{ fontSize: '10px', color: 'var(--admin-muted)', textTransform: 'capitalize' }}>
+                  {adminRole} · Operations
+                </div>
+              </div>
+              <button
+                onClick={handleLogout}
+                style={{ background: 'none', border: 'none', color: '#EF4444', cursor: 'pointer', fontSize: '11px', fontWeight: 700, padding: '4px' }}
+                title="Sign out of Admin Session"
+              >
+                Sign out
+              </button>
+            </div>
+          )}
+
+          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', paddingTop: !sidebarCollapsed ? '4px' : '0' }}>
             <button
               onClick={() => toggleTheme()}
               className={styles.btnSecondary}
-              style={{ padding: '6px 10px', height: '32px', fontSize: '12px' }}
+              style={{ padding: '6px 10px', height: '30px', fontSize: '11px', flex: sidebarCollapsed ? 1 : 'none' }}
               title="Toggle Light / Dark mode"
             >
-              {theme === 'dark' ? <Sun size={14} /> : <Moon size={14} />}
+              {theme === 'dark' ? <Sun size={13} /> : <Moon size={13} />}
               {!sidebarCollapsed && <span>{theme === 'dark' ? 'Light' : 'Dark'}</span>}
             </button>
             <button
               onClick={() => setShowKeyboardHelp(true)}
               className={styles.btnSecondary}
-              style={{ padding: '6px 8px', height: '32px' }}
+              style={{ padding: '6px 8px', height: '30px', fontSize: '11px' }}
               title="Keyboard Shortcuts (?)"
             >
-              <HelpCircle size={14} />
+              <HelpCircle size={13} />
+              {!sidebarCollapsed && <span style={{ marginLeft: '4px', fontSize: '11px' }}>Shortcuts</span>}
             </button>
           </div>
-
-          {!sidebarCollapsed && (
-            <div style={{ fontSize: '11px', color: 'var(--admin-muted)', display: 'flex', justifyContent: 'space-between', alignItems: 'center', paddingTop: '4px' }}>
-              <span>{adminName}</span>
-              <button onClick={handleLogout} style={{ background: 'none', border: 'none', color: '#EF4444', cursor: 'pointer', fontSize: '11px', fontWeight: 600 }}>
-                Sign out
-              </button>
-            </div>
-          )}
         </div>
       </aside>
 
