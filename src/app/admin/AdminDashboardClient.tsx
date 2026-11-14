@@ -224,7 +224,7 @@ export default function AdminDashboardClient({ adminName, adminRole }: AdminDash
       showToast(`Product ${updated.title} updated`);
     } else {
       const created = await addProduct(productData);
-      setProducts(prev => [created, ...prev]);
+      setProducts(prev => [created, ...prev.filter(p => p.id !== created.id)]);
       showToast(`Product ${created.title} created`);
     }
     setIsProductDrawerOpen(false);
@@ -266,29 +266,45 @@ export default function AdminDashboardClient({ adminName, adminRole }: AdminDash
     router.push('/admin/login');
   };
 
-  // Filtered Orders
-  const filteredOrders = orders.filter(o => {
-    const q = orderSearch.toLowerCase();
-    const matchQ = !q || o.orderNumber.includes(q) || o.customerName.toLowerCase().includes(q) || o.customerEmail.toLowerCase().includes(q);
-    const matchStatus = orderStatusFilter === 'all' || o.fulfillmentStatus === orderStatusFilter;
-    return matchQ && matchStatus;
-  });
+  // Filtered Orders (guaranteed unique by id/orderNumber)
+  const filteredOrders = React.useMemo(() => {
+    const seen = new Set<string>();
+    return orders.filter(o => {
+      const key = o.id || o.orderNumber;
+      if (!key || seen.has(key)) return false;
+      seen.add(key);
+      const q = orderSearch.toLowerCase();
+      const matchQ = !q || o.orderNumber.includes(q) || o.customerName.toLowerCase().includes(q) || o.customerEmail.toLowerCase().includes(q);
+      const matchStatus = orderStatusFilter === 'all' || o.fulfillmentStatus === orderStatusFilter;
+      return matchQ && matchStatus;
+    });
+  }, [orders, orderSearch, orderStatusFilter]);
 
-  // Filtered Products
-  const filteredProducts = products.filter(p => {
-    const q = productSearch.toLowerCase();
-    const matchQ = !q || p.title.toLowerCase().includes(q) || p.sku.toLowerCase().includes(q);
-    const matchCat = productCategoryFilter === 'all' || p.category === productCategoryFilter;
-    return matchQ && matchCat;
-  });
+  // Filtered Products (guaranteed unique by id)
+  const filteredProducts = React.useMemo(() => {
+    const seen = new Set<string>();
+    return products.filter(p => {
+      if (!p?.id || seen.has(p.id)) return false;
+      seen.add(p.id);
+      const q = productSearch.toLowerCase();
+      const matchQ = !q || p.title.toLowerCase().includes(q) || p.sku.toLowerCase().includes(q);
+      const matchCat = productCategoryFilter === 'all' || p.category === productCategoryFilter;
+      return matchQ && matchCat;
+    });
+  }, [products, productSearch, productCategoryFilter]);
 
-  // Filtered Customers
-  const filteredCustomers = customers.filter(c => {
-    const q = customerSearch.toLowerCase();
-    const matchQ = !q || c.name.toLowerCase().includes(q) || c.email.toLowerCase().includes(q) || c.phone.includes(q);
-    const matchSeg = customerSegmentFilter === 'all' || c.segment === customerSegmentFilter;
-    return matchQ && matchSeg;
-  });
+  // Filtered Customers (guaranteed unique by id)
+  const filteredCustomers = React.useMemo(() => {
+    const seen = new Set<string>();
+    return customers.filter(c => {
+      if (!c?.id || seen.has(c.id)) return false;
+      seen.add(c.id);
+      const q = customerSearch.toLowerCase();
+      const matchQ = !q || c.name.toLowerCase().includes(q) || c.email.toLowerCase().includes(q) || c.phone.includes(q);
+      const matchSeg = customerSegmentFilter === 'all' || c.segment === customerSegmentFilter;
+      return matchQ && matchSeg;
+    });
+  }, [customers, customerSearch, customerSegmentFilter]);
 
   const formatNgn = (kobo: number) => `₦${(kobo / 100).toLocaleString('en-NG')}`;
 

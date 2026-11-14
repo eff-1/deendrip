@@ -179,7 +179,13 @@ export async function getProducts(options?: {
     if (res.ok) {
       const data = await res.json();
       if (Array.isArray(data?.products)) {
-        cachedProducts = data.products.map(mapDbProductToAdminProduct);
+        const seen = new Set<string>();
+        const unique = data.products.filter((p: any) => {
+          if (!p?.id || seen.has(p.id)) return false;
+          seen.add(p.id);
+          return true;
+        });
+        cachedProducts = unique.map(mapDbProductToAdminProduct);
       }
     }
   } catch (err) {
@@ -213,7 +219,14 @@ export async function getOrders(options?: {
     if (res.ok) {
       const data = await res.json();
       if (Array.isArray(data?.orders)) {
-        cachedOrders = data.orders.map(mapDbOrderToAdminOrder);
+        const seen = new Set<string>();
+        const unique = data.orders.filter((o: any) => {
+          const key = o?.id || o?.orderReference;
+          if (!key || seen.has(key)) return false;
+          seen.add(key);
+          return true;
+        });
+        cachedOrders = unique.map(mapDbOrderToAdminOrder);
       }
     }
   } catch (err) {
@@ -283,7 +296,7 @@ export async function addProduct(productData: Omit<AdminProduct, 'id' | 'created
   const created = mapDbProductToAdminProduct(product);
 
   if (cachedProducts) {
-    cachedProducts.unshift(created);
+    cachedProducts = [created, ...cachedProducts.filter(p => p.id !== created.id)];
   }
 
   return created;
