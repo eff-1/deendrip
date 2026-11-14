@@ -23,6 +23,9 @@
   background-color: var(--admin-canvas);
   color: var(--admin-text);
   min-height: 100vh;
+  height: 100vh;
+  max-height: 100vh;
+  overflow: hidden;
   display: flex;
 }
 
@@ -43,7 +46,7 @@
   font-variant-numeric: tabular-nums;
 }
 
-/* Sidebar Desktop */
+/* Sidebar Desktop - Fixed permanently to left viewport */
 .sidebar {
   width: 240px;
   background-color: var(--admin-surface);
@@ -51,8 +54,10 @@
   display: flex;
   flex-direction: column;
   flex-shrink: 0;
-  position: sticky;
+  position: fixed;
   top: 0;
+  bottom: 0;
+  left: 0;
   height: 100vh;
   z-index: 40;
   transition: width var(--admin-transition);
@@ -154,15 +159,24 @@
   gap: 8px;
 }
 
-/* Main Layout Area */
+/* Main Layout Area - Independent scroll viewport with sidebar offset */
 .mainContent {
   flex: 1;
   min-width: 0;
+  margin-left: 240px;
+  height: 100vh;
+  overflow-y: auto;
+  overflow-x: hidden;
   display: flex;
   flex-direction: column;
+  transition: margin-left var(--admin-transition);
 }
 
-/* Top Navigation Bar */
+.mainContentCollapsed {
+  margin-left: 68px;
+}
+
+/* Top Navigation Bar - Sticks to top of mainContent scroll container */
 .topBar {
   height: 56px;
   background-color: var(--admin-surface);
@@ -174,6 +188,7 @@
   position: sticky;
   top: 0;
   z-index: 30;
+  flex-shrink: 0;
 }
 
 .searchTrigger {
@@ -498,8 +513,19 @@
 }
 
 @media (max-width: 767px) {
+  .adminRoot {
+    height: auto;
+    max-height: none;
+    overflow: visible;
+  }
   .sidebar {
     display: none;
+  }
+  .mainContent,
+  .mainContentCollapsed {
+    margin-left: 0 !important;
+    height: auto;
+    overflow: visible;
   }
   .topBar {
     padding: 0 16px;

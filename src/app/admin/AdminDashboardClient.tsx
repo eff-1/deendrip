@@ -432,10 +432,21 @@ export default function AdminDashboardClient({ adminName, adminRole }: AdminDash
       </aside>
 
       {/* ── MAIN CONTENT ── */}
-      <div className={styles.mainContent}>
+      <div className={`${styles.mainContent} ${sidebarCollapsed ? styles.mainContentCollapsed : ''}`}>
         {/* Top Bar */}
         <header className={styles.topBar}>
           <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+            {/* Sidebar Collapse/Expand Toggle */}
+            <button
+              onClick={() => setSidebarCollapsed(prev => !prev)}
+              className={styles.btnSecondary}
+              style={{ padding: '6px', width: '32px', height: '32px', display: 'flex', alignItems: 'center', justifyContent: 'center' }}
+              title={sidebarCollapsed ? "Expand sidebar" : "Collapse sidebar"}
+              aria-label="Toggle sidebar"
+            >
+              <Menu size={16} />
+            </button>
+
             {/* Command Palette Trigger */}
             <div
               className={styles.searchTrigger}
