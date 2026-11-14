@@ -1520,7 +1520,11 @@ export async function updateOrderFulfillmentAsync(
 
   let combinedTracking = trackingRef;
   if (carrier && trackingRef) {
-    combinedTracking = `${carrier}: ${trackingRef}`;
+    if (trackingRef.toLowerCase().startsWith(carrier.toLowerCase())) {
+      combinedTracking = trackingRef;
+    } else {
+      combinedTracking = `${carrier}: ${trackingRef}`;
+    }
   } else if (carrier && !trackingRef) {
     combinedTracking = carrier;
   }
