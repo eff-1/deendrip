@@ -1,5 +1,5 @@
 import { NextResponse } from 'next/server';
-import { getProductById, updateProduct, deleteProduct, logAdminAction } from '@/lib/db';
+import { getProductById, updateProductAsync, deleteProductAsync, logAdminAction } from '@/lib/db';
 import { requireAdmin } from '@/lib/adminAuth';
 import type { Category } from '@/lib/types';
 
@@ -40,7 +40,7 @@ export async function PATCH(
       return NextResponse.json({ error: 'Price must be a positive integer in kobo' }, { status: 400 });
     }
 
-    const product = updateProduct(id, {
+    const product = await updateProductAsync(id, {
       name: name?.trim(),
       description: description?.trim(),
       category,
@@ -79,7 +79,7 @@ export async function DELETE(
   const product = getProductById(id);
   if (!product) return NextResponse.json({ error: 'Product not found' }, { status: 404 });
 
-  const success = deleteProduct(id);
+  const success = await deleteProductAsync(id);
   if (!success) return NextResponse.json({ error: 'Failed to delete product' }, { status: 500 });
 
   logAdminAction(admin.id, admin.email, 'DELETE_PRODUCT', 'product', id, product.name);

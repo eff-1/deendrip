@@ -1,5 +1,5 @@
 import { NextResponse } from 'next/server';
-import { getProducts, createProduct, logAdminAction } from '@/lib/db';
+import { getProductsAsync, createProductAsync, logAdminAction } from '@/lib/db';
 import { requireAdmin } from '@/lib/adminAuth';
 import type { Category } from '@/lib/types';
 
@@ -14,7 +14,7 @@ export async function GET(request: Request) {
   const publishedOnly = searchParams.get('published') !== 'false';
   const searchQuery = searchParams.get('q') || undefined;
 
-  const products = getProducts({
+  const products = await getProductsAsync({
     category: category || undefined,
     publishedOnly,
     searchQuery,
@@ -56,7 +56,7 @@ export async function POST(request: Request) {
       .replace(/-+/g, '-')
       .slice(0, 80);
 
-    const product = createProduct({
+    const product = await createProductAsync({
       slug,
       name: name.trim(),
       description: description.trim(),

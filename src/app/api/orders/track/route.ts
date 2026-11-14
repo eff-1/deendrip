@@ -1,5 +1,5 @@
 import { NextResponse } from 'next/server';
-import { getOrderByReference, getOrdersByCustomerEmail } from '@/lib/db';
+import { getOrderByReferenceAsync, getOrdersByCustomerEmailAsync } from '@/lib/db';
 
 export async function POST(req: Request) {
   try {
@@ -14,7 +14,7 @@ export async function POST(req: Request) {
     }
 
     // 1. Try order reference first (e.g. DD-XXXXX or exact match)
-    const singleOrder = getOrderByReference(cleanQuery);
+    const singleOrder = await getOrderByReferenceAsync(cleanQuery);
     if (singleOrder) {
       return NextResponse.json({
         orders: [singleOrder],
@@ -23,7 +23,7 @@ export async function POST(req: Request) {
 
     // 2. If it contains an '@', search by customer email
     if (cleanQuery.includes('@')) {
-      const emailOrders = getOrdersByCustomerEmail(cleanQuery);
+      const emailOrders = await getOrdersByCustomerEmailAsync(cleanQuery);
       return NextResponse.json({
         orders: emailOrders,
       });

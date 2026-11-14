@@ -1,7 +1,7 @@
 import React from 'react';
 import Link from 'next/link';
 import { notFound } from 'next/navigation';
-import { getOrderByReference } from '@/lib/db';
+import { getOrderByReferenceAsync } from '@/lib/db';
 import { formatNaira, formatDate } from '@/lib/formatters';
 import DeliveryTrackingMap from '@/components/DeliveryTrackingMap';
 import styles from './order.module.css';
@@ -14,7 +14,7 @@ export default async function OrderConfirmationPage({
   params: Promise<{ reference: string }>;
 }) {
   const { reference } = await params;
-  const order = getOrderByReference(reference);
+  const order = await getOrderByReferenceAsync(reference);
 
   if (!order) {
     notFound();
@@ -58,6 +58,12 @@ export default async function OrderConfirmationPage({
               <p style={{ marginTop: '0.25rem', fontSize: '0.8rem', color: 'var(--text-muted)' }}>
                 Status: <strong style={{ textTransform: 'uppercase', color: 'var(--accent-primary)' }}>{order.fulfillmentStatus}</strong>
               </p>
+              {order.trackingReference && (
+                <div style={{ marginTop: '0.5rem', padding: '0.45rem 0.65rem', backgroundColor: 'var(--bg-secondary)', borderRadius: '4px', fontSize: '0.82rem', border: '1px solid var(--border-light)' }}>
+                  <span style={{ color: 'var(--text-muted)' }}>Waybill / Courier: </span>
+                  <strong style={{ color: 'var(--accent-primary)' }}>{order.trackingReference}</strong>
+                </div>
+              )}
             </div>
           </div>
 
@@ -97,6 +103,7 @@ export default async function OrderConfirmationPage({
             deliveryState={order.deliveryState}
             fulfillmentStatus={order.fulfillmentStatus}
             deliveryFeeKobo={order.deliveryFeeKobo}
+            trackingReference={order.trackingReference}
           />
 
           <div style={{ backgroundColor: 'var(--bg-secondary)', padding: 'var(--space-4)', borderRadius: 'var(--radius-xs)', fontSize: '0.82rem', color: 'var(--text-secondary)', marginTop: 'var(--space-4)' }}>

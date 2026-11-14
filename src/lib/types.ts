@@ -58,7 +58,7 @@ export interface CartItem {
 }
 
 export type PaymentStatus = 'pending' | 'paid' | 'failed' | 'refunded';
-export type FulfillmentStatus = 'pending' | 'processing' | 'shipped' | 'delivered' | 'cancelled';
+export type FulfillmentStatus = 'pending' | 'processing' | 'shipped' | 'out_for_delivery' | 'delivered' | 'cancelled';
 
 export interface OrderItem {
   id: string;

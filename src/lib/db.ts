@@ -571,6 +571,131 @@ export function getProducts(options?: {
   return rows.map(r => hydrateProduct(db, r));
 }
 
+export async function getProductsAsync(options?: {
+  category?: Category | 'all';
+  featuredOnly?: boolean;
+  newDropOnly?: boolean;
+  publishedOnly?: boolean;
+  searchQuery?: string;
+}): Promise<Product[]> {
+  const turso = getTursoClient();
+  if (!turso) {
+    return getProducts(options);
+  }
+
+  try {
+    let sql = 'SELECT * FROM products WHERE 1=1';
+    const args: any[] = [];
+
+    if (options?.publishedOnly !== false) {
+      sql += ' AND is_published = 1';
+    }
+
+    if (options?.searchQuery) {
+      sql += ' AND (name LIKE ? OR category LIKE ? OR description LIKE ?)';
+      const term = `%${options.searchQuery}%`;
+      args.push(term, term, term);
+    }
+
+    if (options?.category && options.category !== 'all') {
+      sql += ' AND category = ?';
+      args.push(options.category);
+    }
+
+    if (options?.featuredOnly) {
+      sql += ' AND is_featured = 1';
+    }
+
+    if (options?.newDropOnly) {
+      sql += ' AND is_new_drop = 1';
+    }
+
+    sql += ' ORDER BY is_featured DESC, created_at DESC';
+
+    const prodRes = await turso.execute({ sql, args });
+    if (prodRes.rows.length === 0) {
+      return getProducts(options);
+    }
+
+    const prodIds = prodRes.rows.map(r => String(r.id));
+    const placeholders = prodIds.map(() => '?').join(', ');
+
+    // Fetch images and variants in parallel from Turso
+    const [imagesRes, variantsRes] = await Promise.all([
+      turso.execute({
+        sql: `SELECT * FROM product_images WHERE product_id IN (${placeholders}) ORDER BY sort_order ASC`,
+        args: prodIds,
+      }),
+      turso.execute({
+        sql: `SELECT * FROM product_variants WHERE product_id IN (${placeholders}) ORDER BY id ASC`,
+        args: prodIds,
+      }),
+    ]);
+
+    const imagesByProdId = new Map<string, ProductImage[]>();
+    for (const img of imagesRes.rows) {
+      const pid = String(img.product_id);
+      if (!imagesByProdId.has(pid)) imagesByProdId.set(pid, []);
+      imagesByProdId.get(pid)!.push({
+        id: String(img.id),
+        productId: pid,
+        imageUrl: String(img.image_url),
+        altText: String(img.alt_text || ''),
+        isPrimary: Number(img.is_primary) === 1,
+        isAlternate: Number(img.is_alternate) === 1,
+        sortOrder: Number(img.sort_order || 0),
+      });
+    }
+
+    const variantsByProdId = new Map<string, ProductVariant[]>();
+    for (const v of variantsRes.rows) {
+      const pid = String(v.product_id);
+      if (!variantsByProdId.has(pid)) variantsByProdId.set(pid, []);
+      variantsByProdId.get(pid)!.push({
+        id: String(v.id),
+        productId: pid,
+        size: String(v.size),
+        color: v.color ? String(v.color) : undefined,
+        stockQuantity: Number(v.stock_quantity || 0),
+        sku: String(v.sku || ''),
+        priceOverrideKobo: v.price_override_kobo ? Number(v.price_override_kobo) : null,
+      });
+    }
+
+    return prodRes.rows.map(r => {
+      const id = String(r.id);
+      let details: Product['details'] = undefined;
+      if (r.details_json) {
+        try {
+          details = JSON.parse(String(r.details_json));
+        } catch {}
+      }
+
+      return {
+        id,
+        slug: String(r.slug),
+        name: String(r.name),
+        description: String(r.description),
+        category: String(r.category) as Category,
+        priceKobo: Number(r.price_kobo),
+        salePriceKobo: r.sale_price_kobo ? Number(r.sale_price_kobo) : undefined,
+        isPublished: Number(r.is_published) === 1,
+        isFeatured: Number(r.is_featured) === 1,
+        isNewDrop: Number(r.is_new_drop) === 1,
+        details,
+        images: imagesByProdId.get(id) || [],
+        variants: variantsByProdId.get(id) || [],
+        createdAt: String(r.created_at),
+        updatedAt: r.updated_at ? String(r.updated_at) : undefined,
+      };
+    });
+  } catch (err) {
+    console.error('Turso getProductsAsync error, falling back to local SQLite:', err);
+    return getProducts(options);
+  }
+}
+
+
 export function getProductBySlug(slug: string): Product | null {
   const db = getDb();
   const row = db.prepare('SELECT * FROM products WHERE slug = ?').get(slug) as any | undefined;
@@ -718,6 +843,55 @@ export function createProduct(input: CreateProductInput): Product {
   return getProductById(id)!;
 }
 
+export async function createProductAsync(input: CreateProductInput): Promise<Product> {
+  const product = createProduct(input);
+  const turso = getTursoClient();
+  if (turso) {
+    try {
+      await turso.execute({
+        sql: `INSERT OR REPLACE INTO products (
+          id, slug, name, description, category, price_kobo, sale_price_kobo,
+          is_published, is_featured, is_new_drop, details_json, created_at, updated_at
+        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+        args: [
+          product.id, product.slug, product.name, product.description, product.category,
+          product.priceKobo, product.salePriceKobo ?? null,
+          product.isPublished ? 1 : 0, product.isFeatured ? 1 : 0, product.isNewDrop ? 1 : 0,
+          product.details ? JSON.stringify(product.details) : null,
+          product.createdAt, product.updatedAt || product.createdAt,
+        ],
+      });
+
+      if (input.images && input.images.length > 0) {
+        for (let i = 0; i < input.images.length; i++) {
+          const img = input.images[i];
+          await turso.execute({
+            sql: `INSERT OR REPLACE INTO product_images (
+              id, product_id, image_url, alt_text, is_primary, is_alternate, sort_order
+            ) VALUES (?, ?, ?, ?, ?, ?, ?)`,
+            args: [`img-${product.id}-${i}`, product.id, img.imageUrl, img.altText, img.isPrimary ? 1 : 0, img.isAlternate ? 1 : 0, img.sortOrder],
+          });
+        }
+      }
+
+      if (input.variants && input.variants.length > 0) {
+        for (let i = 0; i < input.variants.length; i++) {
+          const v = input.variants[i];
+          await turso.execute({
+            sql: `INSERT OR REPLACE INTO product_variants (
+              id, product_id, size, color, stock_quantity, sku, price_override_kobo
+            ) VALUES (?, ?, ?, ?, ?, ?, ?)`,
+            args: [`var-${product.id}-${i}`, product.id, v.size, v.color || null, v.stockQuantity, v.sku, v.priceOverrideKobo ?? null],
+          });
+        }
+      }
+    } catch (err) {
+      console.error('Turso createProductAsync error:', err);
+    }
+  }
+  return product;
+}
+
 export interface UpdateProductInput {
   name?: string;
   description?: string;
@@ -768,9 +942,49 @@ export function updateProduct(id: string, input: UpdateProductInput): Product | 
   return getProductById(id);
 }
 
+export async function updateProductAsync(id: string, input: UpdateProductInput): Promise<Product | null> {
+  const updated = updateProduct(id, input);
+  return updated;
+}
+
 export function deleteProduct(id: string): boolean {
   const db = getDb();
+  try {
+    db.prepare('DELETE FROM product_images WHERE product_id = ?').run(id);
+    db.prepare('DELETE FROM product_variants WHERE product_id = ?').run(id);
+  } catch {}
   const res = db.prepare('DELETE FROM products WHERE id = ?').run(id);
+
+  const turso = getTursoClient();
+  if (turso) {
+    turso.execute({ sql: 'DELETE FROM product_images WHERE product_id = ?', args: [id] })
+      .then(() => turso.execute({ sql: 'DELETE FROM product_variants WHERE product_id = ?', args: [id] }))
+      .then(() => turso.execute({ sql: 'DELETE FROM products WHERE id = ?', args: [id] }))
+      .catch(err => console.error('Turso deleteProduct sync error:', err));
+  }
+
+  return res.changes > 0;
+}
+
+export async function deleteProductAsync(id: string): Promise<boolean> {
+  const db = getDb();
+  try {
+    db.prepare('DELETE FROM product_images WHERE product_id = ?').run(id);
+    db.prepare('DELETE FROM product_variants WHERE product_id = ?').run(id);
+  } catch {}
+  const res = db.prepare('DELETE FROM products WHERE id = ?').run(id);
+
+  const turso = getTursoClient();
+  if (turso) {
+    try {
+      await turso.execute({ sql: 'DELETE FROM product_images WHERE product_id = ?', args: [id] });
+      await turso.execute({ sql: 'DELETE FROM product_variants WHERE product_id = ?', args: [id] });
+      await turso.execute({ sql: 'DELETE FROM products WHERE id = ?', args: [id] });
+    } catch (err) {
+      console.error('Turso deleteProductAsync error:', err);
+    }
+  }
+
   return res.changes > 0;
 }
 
@@ -1293,6 +1507,60 @@ export function updateOrderFulfillment(orderRef: string, fulfillmentStatus: Fulf
   return res.changes > 0;
 }
 
+export async function updateOrderFulfillmentAsync(
+  orderRef: string,
+  fulfillmentStatus: FulfillmentStatus,
+  trackingRef?: string,
+  carrier?: string,
+  note?: string,
+  adminName?: string
+): Promise<boolean> {
+  const db = getDb();
+  const now = new Date().toISOString();
+
+  let combinedTracking = trackingRef;
+  if (carrier && trackingRef) {
+    combinedTracking = `${carrier}: ${trackingRef}`;
+  } else if (carrier && !trackingRef) {
+    combinedTracking = carrier;
+  }
+
+  const res = db.prepare(`
+    UPDATE orders SET fulfillment_status = ?, tracking_reference = COALESCE(?, tracking_reference), updated_at = ?
+    WHERE order_reference = ?
+  `).run(fulfillmentStatus, combinedTracking || null, now, orderRef);
+
+  // Add timeline event note
+  const order = db.prepare('SELECT id FROM orders WHERE order_reference = ?').get(orderRef) as { id: string } | undefined;
+  if (order) {
+    const noteText = note
+      ? `Status → ${fulfillmentStatus} | Carrier: ${carrier || 'Unspecified'} | Waybill: ${trackingRef || 'None'} | Note: ${note}`
+      : `Status → ${fulfillmentStatus} | Carrier: ${carrier || 'Unspecified'} | Waybill: ${trackingRef || 'None'}`;
+
+    addOrderNote(order.id, 'admin', adminName || 'Admin Staff', noteText);
+
+    const turso = getTursoClient();
+    if (turso) {
+      try {
+        await turso.execute({
+          sql: `UPDATE orders SET fulfillment_status = ?, tracking_reference = COALESCE(?, tracking_reference), updated_at = ?
+                WHERE order_reference = ?`,
+          args: [fulfillmentStatus, combinedTracking || null, now, orderRef],
+        });
+        await turso.execute({
+          sql: `INSERT INTO order_notes (id, order_id, admin_id, admin_name, note, created_at)
+                VALUES (?, ?, ?, ?, ?, ?)`,
+          args: [`note-${Date.now()}`, order.id, 'admin', adminName || 'Admin Staff', noteText, now],
+        });
+      } catch (err) {
+        console.error('Turso updateOrderFulfillmentAsync error:', err);
+      }
+    }
+  }
+
+  return res.changes > 0;
+}
+
 export function updateOrderNotes(orderRef: string, notes: string): boolean {
   const db = getDb();
   const order = db.prepare('SELECT id FROM orders WHERE order_reference = ?').get(orderRef) as { id: string } | undefined;
@@ -1313,6 +1581,67 @@ export function getOrderNotes(orderId: string): Array<{ id: string; adminName: s
   const db = getDb();
   return (db.prepare('SELECT * FROM order_notes WHERE order_id = ? ORDER BY created_at ASC').all(orderId) as any[])
     .map(n => ({ id: n.id, adminName: n.admin_name, note: n.note, createdAt: n.created_at }));
+}
+
+export async function getOrderNotesAsync(orderId: string): Promise<Array<{ id: string; adminName: string; note: string; createdAt: string }>> {
+  const turso = getTursoClient();
+  if (turso) {
+    try {
+      const res = await turso.execute({
+        sql: 'SELECT * FROM order_notes WHERE order_id = ? ORDER BY created_at ASC',
+        args: [orderId],
+      });
+      if (res.rows.length > 0) {
+        return res.rows.map(n => ({
+          id: String(n.id),
+          adminName: String(n.admin_name),
+          note: String(n.note),
+          createdAt: String(n.created_at),
+        }));
+      }
+    } catch {}
+  }
+  return getOrderNotes(orderId);
+}
+
+export async function getOrdersByCustomerEmailAsync(email: string): Promise<Order[]> {
+  const turso = getTursoClient();
+  if (turso) {
+    try {
+      const res = await turso.execute({
+        sql: 'SELECT * FROM orders WHERE LOWER(customer_email) = LOWER(?) ORDER BY created_at DESC',
+        args: [email.trim()],
+      });
+      if (res.rows.length > 0) {
+        const orderIds = res.rows.map(r => String(r.id));
+        const placeholders = orderIds.map(() => '?').join(', ');
+        const itemsRes = await turso.execute({
+          sql: `SELECT * FROM order_items WHERE order_id IN (${placeholders})`,
+          args: orderIds,
+        });
+        const itemsByOrderId = new Map<string, OrderItem[]>();
+        for (const it of itemsRes.rows) {
+          const oid = String(it.order_id);
+          if (!itemsByOrderId.has(oid)) itemsByOrderId.set(oid, []);
+          itemsByOrderId.get(oid)!.push({
+            id: String(it.id),
+            orderId: oid,
+            productId: String(it.product_id),
+            variantId: String(it.variant_id),
+            productNameSnapshot: String(it.product_name_snapshot),
+            variantNameSnapshot: String(it.variant_name_snapshot),
+            unitPriceKoboSnapshot: Number(it.unit_price_kobo_snapshot),
+            quantity: Number(it.quantity),
+            subtotalKobo: Number(it.subtotal_kobo),
+          });
+        }
+        return res.rows.map(r => rowToOrder(r, itemsByOrderId.get(String(r.id)) || []));
+      }
+    } catch (err) {
+      console.error('Turso getOrdersByCustomerEmailAsync error:', err);
+    }
+  }
+  return getOrdersByCustomerEmail(email);
 }
 
 export function updateVariantStock(variantId: string, newStock: number): boolean {

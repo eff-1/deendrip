@@ -10,6 +10,7 @@ interface DeliveryTrackingMapProps {
   deliveryState: string;
   fulfillmentStatus: string;
   deliveryFeeKobo: number;
+  trackingReference?: string | null;
 }
 
 export default function DeliveryTrackingMap({
@@ -19,6 +20,7 @@ export default function DeliveryTrackingMap({
   deliveryState,
   fulfillmentStatus,
   deliveryFeeKobo,
+  trackingReference,
 }: DeliveryTrackingMapProps) {
   const mapContainerRef = useRef<HTMLDivElement>(null);
   const [mapInitialized, setMapInitialized] = useState(false);
@@ -148,6 +150,11 @@ export default function DeliveryTrackingMap({
           <p className={styles.subtext}>
             Origin: <strong>Deen Drip Lagos Studio Hub</strong> → Destination: <strong>{deliveryCity}, {deliveryState}</strong>
           </p>
+          {trackingReference && (
+            <p style={{ marginTop: '0.35rem', fontSize: '0.82rem', color: 'var(--accent-primary, #00ffd5)' }}>
+              Waybill / Handover: <strong>{trackingReference}</strong>
+            </p>
+          )}
         </div>
 
         <a
